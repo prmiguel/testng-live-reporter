@@ -38,10 +38,10 @@ file.
 Newline-delimited JSON, one record per line, three record kinds.
 
 ```jsonl
-{"type":"run.started","schemaVersion":1,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","reporter":{"name":"testng-live-reporter-json","version":"1.0.0-SNAPSHOT"}}
+{"type":"run.started","schemaVersion":2,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","reporter":{"name":"testng-live-reporter-json","version":"1.0.0-SNAPSHOT"}}
 {"type":"test.event","recordSchemaVersion":1,"eventSchemaVersion":1,"sequence":1,"runId":"demo-run","executionId":"demo-run-ba73a6c4faf73db5-0-0-27","state":"STARTED","status":"UNDETERMINED","timestamp":"2026-11-19T15:03:01.310Z","test":{"testId":"com.acme.LoginTest.login[\"bob\"]#a1b2c3d4e5f60718","hash":"a1b2c3d4e5f60718","className":"com.acme.LoginTest","methodName":"login","readableKey":"com.acme.LoginTest.login[\"bob\"]","parameters":[{"declaredType":"java.lang.String","runtimeType":"java.lang.String","value":"bob"}]},"suiteName":"smoke","testName":"LoginTest","threadId":21,"threadName":"TestNG-test-1","invocationIndex":0,"retryAttempt":0,"attributes":{}}
 {"type":"test.event","recordSchemaVersion":1,"eventSchemaVersion":1,"sequence":23,"runId":"demo-run","executionId":"demo-run-ba73a6c4faf73db5-0-0-27","state":"FINISHED","status":"FAILED","timestamp":"2026-11-19T15:03:01.312Z","durationMs":6,"test":{"testId":"..."},"suiteName":"Command line suite","testName":"Command line test","threadId":27,"threadName":"TestNG-test-Command line test-2","invocationIndex":0,"retryAttempt":0,"failure":{"type":"java.lang.AssertionError","message":"expected [true] but found [false]","stackTrace":"java.lang.AssertionError: ...\n\tat org.testng.Assert.fail(Assert.java:111)"},"attributes":{}}
-{"type":"run.summary","schemaVersion":1,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","finishedAt":"2026-11-19T15:03:01.414Z","durationMs":106,"totals":{"events":24,"tests":8,"passed":4,"failed":1,"skipped":2,"ignored":0,"timeout":1,"interrupted":0,"error":0,"undetermined":16,"droppedDuplicates":8,"filtered":0,"writeErrors":0}}
+{"type":"run.summary","schemaVersion":2,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","finishedAt":"2026-11-19T15:03:01.414Z","durationMs":106,"totals":{"events":24,"tests":8,"passed":4,"failed":1,"skipped":2,"ignored":0,"timeout":1,"interrupted":0,"error":0,"undetermined":16,"droppedDuplicates":8,"filtered":0,"writeErrors":0}}
 ```
 
 Rules:
@@ -56,10 +56,10 @@ Rules:
 Written at `close()`. The event objects are the live-stream records spliced verbatim.
 
 ```json
-{"schemaVersion":1,
- "run":{"schemaVersion":1,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","reporter":{"name":"testng-live-reporter-json","version":"1.0.0-SNAPSHOT"}},
+{"schemaVersion":2,
+ "run":{"schemaVersion":2,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","reporter":{"name":"testng-live-reporter-json","version":"1.0.0-SNAPSHOT"}},
  "events":[{"type":"test.event", "...":"..."}],
- "summary":{"type":"run.summary","schemaVersion":1,"finishedAt":"2026-11-19T15:03:01.414Z","durationMs":106,"totals":{"...":"..."}}}
+ "summary":{"type":"run.summary","schemaVersion":2,"finishedAt":"2026-11-19T15:03:01.414Z","durationMs":106,"totals":{"...":"..."}}}
 ```
 
 Because it is assembled by re-reading the `.ndjson`, a run whose JVM died still yields a
@@ -68,7 +68,7 @@ compact by design: pretty-printing would require a full re-parse of every record
 
 ### Schema
 
-`src/main/resources/schema/testng-live-report-v1.schema.json` (JSON Schema draft-07) covers
+`src/main/resources/schema/testng-live-report-v2.schema.json` (JSON Schema draft-07) covers
 both the document and each NDJSON record. It is shipped for consumers to validate against;
 it is not enforced at runtime.
 
@@ -177,17 +177,25 @@ testNG.run();
 
 ## Known `core` limitations
 
-A reporter cannot compensate for these; they are recorded so consumers are not surprised.
-Fixing them requires a `core` change.
+These were fixed in `core`; the rows are kept so the reporter's defensive behaviour is
+explained rather than rediscovered.
 
-| Symptom | Cause | Effect here |
-|---|---|---|
-| Every invoked test emits `STARTED` twice | `onTestStart` and `beforeInvocation` both publish it | Collapsed by per-`(executionId, state)` dedupe; counted in `totals.droppedDuplicates` |
-| `suiteName` / `testName` can be wrong under `parallel="tests"`/`"suites"` | `core` swaps one global `ExecutionEventFactory` per context | Values are passed through verbatim |
-| No run-level event | `onExecutionStart`/`onExecutionFinish` publish nothing | `run.started` and `run.summary` are synthesised by this reporter |
-| `DISCOVERED`, `QUEUED`, `IGNORED` never occur | `core` has no factory method or callback for them | Only emitted if `core` starts emitting them |
-| `close()` may discard queued events | `ExecutionEventBus` calls `shutdownNow()` on timeout | Mitigated by flushing every record; residual risk for very slow sinks |
-| `duration` is the listener's timing | `result.getStartMillis()` is unused | `durationMs` is present only on `FINISHED` events |
+| Former symptom | Status |
+|---|---|
+| Every invoked test emitted `STARTED` twice | **Fixed** — `core` guards each transition, so a healthy run reports `totals.droppedDuplicates: 0`. The reporter still de-duplicates in case an older `core` jar is on the classpath |
+| `suiteName` / `testName` wrong under `parallel="tests"`/`"suites"` | **Fixed** — names are captured per attempt from `result.getTestContext()` |
+| No run-level information | **Fixed** — `core` calls `ExecutionReporter.onRunStarted`/`onRunFinished`. `run.started` and `run.summary` are still written by this reporter, which is what a JSON consumer reads |
+| `DISCOVERED`, `IGNORED` never occurred | **Fixed** — both are emitted now |
+| `QUEUED` never occurred | **Will not be fixed** — TestNG exposes no callback between discovery and `onTestStart`. The constant is reserved and never emitted |
+| `close()` could discard queued events | **Fixed** — the bus drains with an extra grace period and logs how many tasks it had to abandon |
+| `duration` was the listener's timing | **Fixed** — terminal events use `result.getStartMillis()`/`getEndMillis()` |
+| `retryAttempt` was always 1 | **Fixed** — attempt numbers now count 0, 1, 2, … |
+
+## Schema versions
+
+Reports carry `schemaVersion`. Version **2** is current. Version **1** remains published at
+`schema/testng-live-report-v1.schema.json`: the record shapes did not change, so a v1
+consumer can read v2 output, and the only difference is which states actually occur.
 
 ---
 

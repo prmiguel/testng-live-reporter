@@ -1,6 +1,7 @@
 package io.github.prmiguel.testng.live.core.spi;
 
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
+import io.github.prmiguel.testng.live.core.model.RunInfo;
 
 /**
  * Pluggable reporter that consumes execution events emitted by the core listener.
@@ -17,6 +18,24 @@ public interface ExecutionReporter extends AutoCloseable {
      * @param event the event
      */
     void onEvent(ExecutionEvent event);
+
+    /**
+     * Called once before any execution event, on the same dispatcher thread.
+     *
+     * @param info run identifiers and start time
+     */
+    default void onRunStarted(RunInfo info) {
+        // no-op by default
+    }
+
+    /**
+     * Called once after the last execution event, on the same dispatcher thread.
+     *
+     * @param info run identifiers and finish time
+     */
+    default void onRunFinished(RunInfo info) {
+        // no-op by default
+    }
 
     /**
      * Flush any buffered output.

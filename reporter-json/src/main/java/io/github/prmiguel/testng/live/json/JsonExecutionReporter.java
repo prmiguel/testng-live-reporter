@@ -1,6 +1,7 @@
 package io.github.prmiguel.testng.live.json;
 
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
+import io.github.prmiguel.testng.live.core.model.RunInfo;
 import io.github.prmiguel.testng.live.core.spi.ExecutionReporter;
 import io.github.prmiguel.testng.live.json.internal.EventFilter;
 import io.github.prmiguel.testng.live.json.internal.JsonDocumentAssembler;
@@ -56,6 +57,7 @@ public final class JsonExecutionReporter implements ExecutionReporter {
 
     private String runId;
     private Instant startedAt;
+    private Instant runStartedAt;
     private Path ndjsonPath;
     private Path documentPath;
     private Writer writer;
@@ -84,6 +86,21 @@ public final class JsonExecutionReporter implements ExecutionReporter {
         this.encoder = EventRecordEncoder.create(configuration);
         this.filter = new EventFilter(configuration);
         this.clock = clock;
+    }
+
+    /**
+     * Records the run boundary. The header is still written lazily on the first event,
+     * because the SPI instantiates reporters without arguments and the output name is
+     * derived from the first event's run id; this only makes the timestamp authoritative.
+     *
+     * @param info run identity and start time
+     */
+    @Override
+    public synchronized void onRunStarted(RunInfo info) {
+        if (!configuration.enabled() || runStartedAt != null) {
+            return;
+        }
+        this.runStartedAt = info.startedAt();
     }
 
     @Override
@@ -151,7 +168,7 @@ public final class JsonExecutionReporter implements ExecutionReporter {
             return;
         }
         this.runId = event.runId();
-        this.startedAt = Instant.now(clock);
+        this.startedAt = runStartedAt != null ? runStartedAt : Instant.now(clock);
         try {
             ReportFiles files = ReportFiles.resolve(configuration.outputDirectory(), configuration.fileName(),
                     runId, configuration.overwrite(), clock);

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/prmiguel/testng-live-reporter/schema/testng-live-report-v1.schema.json",
-  "title": "TestNG Live Reporter JSON output (v1)",
-  "description": "Either the consolidated report document, or a single NDJSON record. Records are discriminated by their 'type' field.",
+  "title": "TestNG Live Reporter JSON output (v1) [deprecated]",
+  "description": "Deprecated: reporters now emit schemaVersion 2. Record shapes are unchanged, so v1 consumers can read v2 output by ignoring the version field; this file is kept so existing validators keep resolving. Either the consolidated report document, or a single NDJSON record. Records are discriminated by their 'type' field.",
   "definitions": {
     "testIdentity": {
       "type": "object",

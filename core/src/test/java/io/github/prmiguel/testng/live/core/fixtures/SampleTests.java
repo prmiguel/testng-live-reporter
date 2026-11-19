@@ -35,4 +35,9 @@ public class SampleTests {
     public void dataProviderTest(int value) {
         Assert.assertTrue(value > 0);
     }
+
+    @Test(groups = "excluded")
+    public void excludedTest() {
+        // never runs when the excluded group is excluded by the suite
+    }
 }

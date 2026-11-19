@@ -138,7 +138,9 @@ function validateStream(path, documentName) {
   }
   const document = parseObject(documentPath);
   if (!document) return;
-  if (document.schemaVersion !== 1) fail(`${documentPath}: schemaVersion is ${document.schemaVersion}`);
+  if (document.schemaVersion !== 1 && document.schemaVersion !== 2) {
+    fail(`${documentPath}: schemaVersion is ${document.schemaVersion}`);
+  }
   if (!Array.isArray(document.events)) {
     fail(`${documentPath}: events is not an array`);
     return;
@@ -166,13 +168,16 @@ function validateDocument(path, name) {
 
 function validateSchemaArtifact() {
   // Resolved against the repository root so this works from any working directory.
-  const schemaPath = join(REPO_ROOT, "reporter-json/src/main/resources/schema/testng-live-report-v1.schema.json");
-  if (!existsSync(schemaPath)) {
-    fail(`${schemaPath}: shipped schema is missing`);
-    return;
+  // v2 is current; v1 stays published so existing consumers keep resolving.
+  for (const version of ["v2", "v1"]) {
+    const schemaPath = join(REPO_ROOT, `reporter-json/src/main/resources/schema/testng-live-report-${version}.schema.json`);
+    if (!existsSync(schemaPath)) {
+      fail(`${schemaPath}: shipped schema is missing`);
+      continue;
+    }
+    const schema = parseObject(schemaPath);
+    if (schema && !schema.definitions) fail(`${schemaPath}: has no definitions`);
   }
-  const schema = parseObject(schemaPath);
-  if (schema && !schema.definitions) fail(`${schemaPath}: has no definitions`);
 }
 
 function sumCounts(events) {

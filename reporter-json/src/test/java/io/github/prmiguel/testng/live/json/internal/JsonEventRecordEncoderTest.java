@@ -45,8 +45,8 @@ class JsonEventRecordEncoderTest {
             Map<String, Object> parsed = parseObject(encoder.event(event));
             assertEquals(state.name(), parsed.get("state"));
             assertEquals("test.event", parsed.get("type"));
-            assertEquals(1L, parsed.get("recordSchemaVersion"));
-            assertEquals(1L, parsed.get("eventSchemaVersion"));
+            assertEquals(2L, parsed.get("recordSchemaVersion"));
+            assertEquals(2L, parsed.get("eventSchemaVersion"));
         }
         for (ExecutionStatus status : ExecutionStatus.values()) {
             if (status == ExecutionStatus.UNDETERMINED) {

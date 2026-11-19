@@ -11,6 +11,9 @@ import java.util.regex.Pattern;
  * <p>
  * Non-terminal events are always kept so a live stream never loses the context that
  * explains a later terminal event; status filtering applies to finished events only.
+ * {@code DISCOVERED} is non-terminal, so it survives a status whitelist such as
+ * {@code FAILED,TIMEOUT}; {@code IGNORED} is terminal and is therefore filtered like any
+ * other outcome.
  */
 public final class EventFilter {
 

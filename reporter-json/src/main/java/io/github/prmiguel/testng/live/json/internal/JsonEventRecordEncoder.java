@@ -25,7 +25,7 @@ public final class JsonEventRecordEncoder implements EventRecordEncoder {
     public static final String RECORD_TEST_EVENT = "test.event";
     public static final String RECORD_RUN_SUMMARY = "run.summary";
 
-    public static final int RECORD_SCHEMA_VERSION = 1;
+    public static final int RECORD_SCHEMA_VERSION = 2;
 
     public static final String REPORTER_NAME = "testng-live-reporter-json";
 

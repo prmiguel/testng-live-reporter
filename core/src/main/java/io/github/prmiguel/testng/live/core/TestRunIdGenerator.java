@@ -4,6 +4,7 @@ import io.github.prmiguel.testng.live.core.internal.DefaultParameterCanonicalize
 import io.github.prmiguel.testng.live.core.model.CanonicalParameter;
 import io.github.prmiguel.testng.live.core.model.TestIdentity;
 import io.github.prmiguel.testng.live.core.spi.ParameterCanonicalizer;
+import org.testng.ITestNGMethod;
 import org.testng.ITestResult;
 
 import java.nio.charset.StandardCharsets;
@@ -71,6 +72,30 @@ public final class TestRunIdGenerator {
         String testId = readableKey + "#" + hash;
 
         return new TestIdentity(className, methodName, parameters, readableKey, hash, testId);
+    }
+
+    /**
+     * Creates a stable identity for a method that has not been invoked yet.
+     * <p>
+     * Discovery callbacks are not handed an {@link ITestResult}, so no parameters are
+     * known. The hashing payload is identical to {@link #createIdentity(ITestResult)}, so a
+     * parameterless method resolves to the same identity before and after it runs.
+     *
+     * @param method discovered TestNG method
+     * @return stable test identity
+     */
+    public TestIdentity createIdentity(ITestNGMethod method) {
+        Objects.requireNonNull(method, "method must not be null");
+
+        String className = method.getTestClass().getRealClass().getName();
+        String methodName = method.getMethodName();
+
+        String readableKey = className + "." + methodName + "[]";
+        String canonicalPayload = className + "#" + methodName + "#";
+        String hash = sha256Prefix(canonicalPayload, 16);
+        String testId = readableKey + "#" + hash;
+
+        return new TestIdentity(className, methodName, Collections.emptyList(), readableKey, hash, testId);
     }
 
     /**

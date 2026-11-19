@@ -33,7 +33,7 @@ class JsonDocumentAssemblerTest {
         JsonDocumentAssembler.assemble(ndjson, document, false);
 
         Map<String, Object> parsed = TestJsonParser.parseObject(Files.readString(document, StandardCharsets.UTF_8));
-        assertEquals(1L, parsed.get("schemaVersion"));
+        assertEquals(2L, parsed.get("schemaVersion"));
         assertEquals("r1", ((Map<?, ?>) parsed.get("run")).get("runId"));
         assertEquals(2, ((List<?>) parsed.get("events")).size());
         assertNotNull(parsed.get("summary"));

@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/prmiguel/testng-live-reporter/schema/testng-live-report-v2.schema.json",
+  "title": "TestNG Live Reporter JSON output (v2)",
+  "description": "Either the consolidated report document, or a single NDJSON record. Records are discriminated by their 'type' field. v2 differs from v1 only in the schema version and in that DISCOVERED and IGNORED records are now actually emitted; record shapes are unchanged.",
+  "definitions": {
+    "testIdentity": {
+      "type": "object",
+      "required": ["testId", "hash", "className", "methodName", "readableKey", "parameters"],
+      "additionalProperties": false,
+      "properties": {
+        "testId": { "type": "string", "description": "readableKey#hash; stable across runs" },
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{16}$", "description": "first 16 hex chars of SHA-256" },
+        "className": { "type": "string" },
+        "methodName": { "type": "string" },
+        "readableKey": { "type": "string" },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["declaredType", "runtimeType", "value"],
+            "additionalProperties": false,
+            "properties": {
+              "declaredType": { "type": "string" },
+              "runtimeType": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "required": ["type", "message", "stackTrace"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "stackTrace": { "type": "string" },
+        "truncated": { "type": "boolean", "description": "True when max-stack-trace-chars cut the trace" }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": ["events", "tests", "passed", "failed", "skipped", "ignored", "timeout",
+                   "interrupted", "error", "undetermined", "droppedDuplicates", "filtered", "writeErrors"],
+      "additionalProperties": false,
+      "properties": {
+        "events": { "type": "integer", "minimum": 0 },
+        "tests": { "type": "integer", "minimum": 0, "description": "Distinct attempts with a terminal status" },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "ignored": { "type": "integer", "minimum": 0 },
+        "timeout": { "type": "integer", "minimum": 0 },
+        "interrupted": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "undetermined": { "type": "integer", "minimum": 0 },
+        "droppedDuplicates": { "type": "integer", "minimum": 0 },
+        "filtered": { "type": "integer", "minimum": 0 },
+        "writeErrors": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "runStarted": {
+      "type": "object",
+      "required": ["type", "schemaVersion", "runId", "startedAt", "reporter"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "run.started" },
+        "schemaVersion": { "const": 2 },
+        "runId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "reporter": {
+          "type": "object",
+          "required": ["name", "version"],
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" }
+          }
+        }
+      }
+    },
+    "testEvent": {
+      "type": "object",
+      "required": ["type", "recordSchemaVersion", "eventSchemaVersion", "sequence", "runId",
+                   "executionId", "state", "status", "timestamp", "test", "suiteName", "testName",
+                   "threadId", "threadName", "invocationIndex", "retryAttempt"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "test.event" },
+        "recordSchemaVersion": { "const": 2 },
+        "eventSchemaVersion": { "const": 2, "description": "Core ExecutionEvent.CURRENT_SCHEMA_VERSION" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "runId": { "type": "string" },
+        "executionId": { "type": "string" },
+        "state": {
+          "enum": ["DISCOVERED", "QUEUED", "STARTED", "IN_PROGRESS", "FINISHED"],
+          "description": "QUEUED is reserved and never emitted: TestNG exposes no callback between discovery and onTestStart."
+        },
+        "status": {
+          "enum": ["UNDETERMINED", "PASSED", "FAILED", "SKIPPED", "IGNORED",
+                   "TIMEOUT", "INTERRUPTED", "ERROR"]
+        },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "integer", "minimum": 0, "description": "Only present on FINISHED events" },
+        "test": { "$ref": "#/definitions/testIdentity" },
+        "suiteName": { "type": "string" },
+        "testName": { "type": "string" },
+        "threadId": { "type": "integer" },
+        "threadName": { "type": "string" },
+        "invocationIndex": { "type": "integer", "minimum": 0 },
+        "retryAttempt": { "type": "integer", "minimum": 0 },
+        "failure": { "$ref": "#/definitions/failure" },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "runSummary": {
+      "type": "object",
+      "required": ["type", "schemaVersion", "runId", "startedAt", "finishedAt", "durationMs", "totals"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "run.summary" },
+        "schemaVersion": { "const": 2 },
+        "runId": { "type": "string" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "finishedAt": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "totals": { "$ref": "#/definitions/totals" }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Consolidated report document",
+      "type": "object",
+      "required": ["schemaVersion", "run", "events"],
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": 2 },
+        "run": { "type": "object" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/testEvent" }
+        },
+        "summary": { "type": "object" }
+      }
+    },
+    {
+      "title": "Single NDJSON record",
+      "oneOf": [
+        { "$ref": "#/definitions/runStarted" },
+        { "$ref": "#/definitions/testEvent" },
+        { "$ref": "#/definitions/runSummary" }
+      ]
+    }
+  ]
+}

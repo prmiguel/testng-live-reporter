@@ -53,13 +53,17 @@ class JsonExecutionReporterIntegrationTest {
 
         List<Map<String, Object>> events = new ArrayList<>();
         Set<String> seenAttemptStates = new HashSet<>();
+        List<String> duplicatedKeys = new ArrayList<>();
         for (String line : lines.subList(1, lines.size() - 1)) {
             Map<String, Object> event = TestJsonParser.parseObject(line);
             assertEquals("test.event", event.get("type"));
             String key = event.get("executionId") + "/" + event.get("state");
-            assertTrue(seenAttemptStates.add(key), "duplicate event for the same attempt and state: " + key);
+            if (!seenAttemptStates.add(key)) {
+                duplicatedKeys.add(key);
+            }
             events.add(event);
         }
+        assertEquals(List.of(), duplicatedKeys, "no (executionId, state) pair may be published twice");
 
         assertFalse(events.isEmpty());
         events.forEach(event -> {
@@ -83,6 +87,15 @@ class JsonExecutionReporterIntegrationTest {
         assertEquals(terminals, totals.get("tests"));
         assertEquals(0L, totals.get("writeErrors"));
         assertTrue(((Number) totals.get("passed")).longValue() >= 4, "4 passing fixture outcomes");
+
+        // core no longer publishes a duplicated STARTED, so the reporter's defence must not
+        // have to fire on a healthy run.
+        assertEquals(0L, totals.get("droppedDuplicates"),
+                "core must not emit duplicate (executionId, state) pairs: " + duplicatedKeys);
+
+        // Discovery records are new in v2 and must still be reported.
+        assertTrue(events.stream().anyMatch(event -> "DISCOVERED".equals(event.get("state"))),
+                "methods must be reported as discovered");
 
         Map<String, Object> document = TestJsonParser.parseObject(
                 Files.readString(reporter.documentPath(), StandardCharsets.UTF_8));

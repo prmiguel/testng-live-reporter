@@ -47,7 +47,7 @@ public record ExecutionEvent(
         Map<String, String> attributes
 ) {
 
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int CURRENT_SCHEMA_VERSION = 2;
 
     public ExecutionEvent {
         Objects.requireNonNull(runId, "runId must not be null");

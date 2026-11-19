@@ -8,6 +8,7 @@ import io.github.prmiguel.testng.live.core.internal.InvocationCounter;
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
 import io.github.prmiguel.testng.live.core.model.ExecutionStatus;
 import io.github.prmiguel.testng.live.core.model.FailureInfo;
+import io.github.prmiguel.testng.live.core.model.RunInfo;
 import io.github.prmiguel.testng.live.core.model.TestIdentity;
 import io.github.prmiguel.testng.live.core.spi.ExecutionReporter;
 import io.github.prmiguel.testng.live.core.spi.ParameterCanonicalizer;
@@ -19,16 +20,20 @@ import org.testng.ISuiteListener;
 import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestNGListener;
+import org.testng.ITestNGMethod;
 import org.testng.ITestResult;
 
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -47,10 +52,12 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
     private final List<ExecutionReporter> reporters;
 
     private final AtomicBoolean started = new AtomicBoolean(false);
+    private final InvocationCounter invocationCounter = new InvocationCounter();
+    private final Set<String> discovered = ConcurrentHashMap.newKeySet();
     private volatile ExecutionEventBus eventBus;
     private volatile ExecutionTrackerRegistry registry;
     private volatile ExecutionEventFactory eventFactory;
-    private final InvocationCounter invocationCounter = new InvocationCounter();
+    private volatile Instant runStartedAt;
 
     /**
      * Default constructor used by TestNG and SPI discovery.
@@ -75,36 +82,49 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
         if (!started.compareAndSet(false, true)) {
             return;
         }
+        this.runStartedAt = Instant.now();
         this.eventBus = new ExecutionEventBus(reporters, configuration);
         this.registry = new ExecutionTrackerRegistry(idGenerator, configuration.runId());
-        this.eventFactory = new ExecutionEventFactory(configuration.runId(), "unknown", "unknown", eventBus);
+        this.eventFactory = new ExecutionEventFactory(configuration.runId(), eventBus);
+        this.eventBus.publishRunStarted(new RunInfo(configuration.runId(), runStartedAt, null));
     }
 
     @Override
     public void onExecutionFinish() {
-        if (eventBus != null) {
-            eventBus.close();
+        if (eventBus == null) {
+            return;
         }
+        eventBus.publishRunFinished(new RunInfo(configuration.runId(), runStartedAt, Instant.now()));
+        eventBus.close();
     }
 
     @Override
     public void onStart(ISuite suite) {
-        // no per-suite events in the first implementation
+        // suite-level events are not emitted
     }
 
     @Override
     public void onFinish(ISuite suite) {
-        // no per-suite events in the first implementation
+        // suite-level events are not emitted
     }
 
     @Override
     public void onStart(ITestContext context) {
-        if (eventFactory != null) {
-            this.eventFactory = new ExecutionEventFactory(
-                    configuration.runId(),
-                    context.getSuite().getName(),
-                    context.getName(),
-                    eventBus);
+        if (eventFactory == null) {
+            return;
+        }
+        String suiteName = context.getSuite() != null ? context.getSuite().getName() : "unknown";
+        String testName = context.getName();
+
+        for (ITestNGMethod method : context.getAllTestMethods()) {
+            TestIdentity identity = idGenerator.createIdentity(method);
+            if (discovered.add(identity.testId())) {
+                publish(eventFactory.discovered(identity, suiteName, testName));
+            }
+        }
+        for (ITestNGMethod method : context.getExcludedMethods()) {
+            TestIdentity identity = idGenerator.createIdentity(method);
+            publish(eventFactory.ignored(identity, suiteName, testName));
         }
     }
 
@@ -115,17 +135,19 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
 
     @Override
     public void onTestStart(ITestResult result) {
-        ExecutionAttempt attempt = ensureAttempt(result);
-        publish(eventFactory.started(attempt));
+        // STARTED is published from beforeInvocation, which is the only callback that also
+        // covers invocations TestNG does not report through onTestStart.
     }
 
     @Override
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
-        if (!method.isTestMethod()) {
+        if (!method.isTestMethod() || eventFactory == null) {
             return;
         }
         ExecutionAttempt attempt = ensureAttempt(testResult);
-        publish(eventFactory.started(attempt));
+        if (attempt.markStarted()) {
+            publish(eventFactory.started(attempt));
+        }
         if (attempt.markInProgress()) {
             publish(eventFactory.inProgress(attempt));
         }
@@ -174,20 +196,29 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
         }
         TestIdentity identity = idGenerator.createIdentity(result);
         int invocationIndex = invocationCounter.nextIndex(identity.hash());
-        int retryAttempt = result.wasRetried() ? 1 : 0;
+        int retryAttempt = registry.retryAttempt(identity);
         return registry.begin(result, invocationIndex, retryAttempt);
     }
 
     private void finish(ITestResult result, ExecutionStatus status, FailureInfo failure, Map<String, String> attributes) {
-        ExecutionAttempt attempt = ensureAttempt(result);
-        if (attempt.markFinished()) {
-            if (result.wasRetried()) {
-                Map<String, String> attrs = new HashMap<>(attributes);
-                attrs.put("willRetry", "true");
-                attributes = Collections.unmodifiableMap(attrs);
-            }
-            publish(eventFactory.finished(attempt, status, failure, attributes));
+        if (eventFactory == null) {
+            return;
         }
+        ExecutionAttempt attempt = ensureAttempt(result);
+        if (!attempt.markFinished()) {
+            return;
+        }
+        Map<String, String> resolved = attributes;
+        if (result.wasRetried()) {
+            Map<String, String> attrs = new HashMap<>(attributes);
+            attrs.put("willRetry", "true");
+            resolved = Collections.unmodifiableMap(attrs);
+            registry.markRetried(attempt.testIdentity());
+        }
+        publish(eventFactory.finished(attempt, status, failure, resolved,
+                result.getStartMillis(), result.getEndMillis()));
+        // Evict only after the terminal event is published, so a retry cannot resurrect it.
+        registry.complete(result);
     }
 
     private void publish(ExecutionEvent event) {

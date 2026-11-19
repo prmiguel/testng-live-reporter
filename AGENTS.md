@@ -69,13 +69,26 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
 - The listener itself is registered through `META-INF/services/org.testng.ITestNGListener`.
 - Event dispatch is asynchronous and one-thread-per-reporter; callers should never block on reporters.
 - `ExecutionEvent` instances are immutable; only `ExecutionAttempt` is mutable internally.
+- `ExecutionAttempt` guards every transition: `markStarted()`, `markInProgress()` and
+  `markFinished()` each succeed at most once, so a duplicated TestNG callback cannot
+  publish the same state twice. Do not remove these guards to "simplify" the listener.
+- Suite and test names live on the `ExecutionAttempt`, captured from
+  `result.getTestContext()`. Never hold them in a field on the listener: under
+  `parallel="tests"` contexts interleave and a single field mis-attributes events.
+- Run boundaries reach reporters through `ExecutionReporter.onRunStarted`/`onRunFinished`
+  with a `RunInfo`, not through `ExecutionEvent`, whose `testIdentity` is mandatory.
+- `ExecutionState.QUEUED` is reserved and never emitted; TestNG has no callback for it.
+- `ExecutionTrackerRegistry` keeps only in-flight attempts; `complete()` must be called
+  after the terminal event is published, never before.
 - Test identity hashes are the first 16 lowercase hex characters of SHA-256.
 
 ## Testing quirks
 
 - The single integration test launches TestNG programmatically from JUnit 5.
 - `SampleTests.timeoutTest` uses a 100 ms TestNG timeout and sleeps 5 seconds; expect TestNG failures and a roughly 5-second run.
-- The integration test asserts exactly 6 terminal events and unique `executionId` values.
+- `SampleTests.excludedTest` is in the `excluded` group so the suite produces a real `IGNORED` record.
+- The integration test asserts 7 terminal events (6 executed + 1 ignored) and unique `executionId` values for attempts.
+- Running `reporter-json` tests without `-am` resolves `core` from `~/.m2`, which silently validates against a **stale** jar and can fake a regression. Use `mvn -pl reporter-json -am test`.
 
 ## Conventions
 

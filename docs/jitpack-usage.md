@@ -153,11 +153,14 @@ ls target/testng-live-reporter/
 # 20261119-163119-example-1795105878.ndjson
 
 head -1 target/testng-live-reporter/*.ndjson | cut -c1-120
-# {"type":"run.started","schemaVersion":1,"runId":"example-1795105878",...
+# {"type":"run.started","schemaVersion":2,"runId":"example-1795105878",...
 
 tail -1 target/testng-live-reporter/*.ndjson
 # {"type":"run.summary",...,"totals":{"events":12,"tests":4,"passed":3,"failed":1,...}}
 ```
+
+`schemaVersion` is `2` for reporters built from `main`. Version `1` output from older jars
+remains readable: the record shapes did not change.
 
 Human-readable checks:
 

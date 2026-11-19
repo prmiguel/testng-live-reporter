@@ -23,7 +23,7 @@ public final class JsonDocumentAssembler {
     private static final String RUN_SUMMARY_PREFIX = "{\"type\":\"" + JsonEventRecordEncoder.RECORD_RUN_SUMMARY + "\",";
     private static final Pattern SEQUENCE = Pattern.compile("\"sequence\":(\\d+)");
 
-    private static final int DOCUMENT_SCHEMA_VERSION = 1;
+    private static final int DOCUMENT_SCHEMA_VERSION = 2;
 
     private JsonDocumentAssembler() {
     }

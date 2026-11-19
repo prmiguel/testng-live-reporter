@@ -188,7 +188,7 @@ ls target/testng-live-reporter/
 
 ```bash
 head -1 target/testng-live-reporter/*.ndjson
-# {"type":"run.started","schemaVersion":1,"runId":"...","startedAt":"...","reporter":{...}}
+# {"type":"run.started","schemaVersion":2,"runId":"...","startedAt":"...","reporter":{...}}
 
 tail -1 target/testng-live-reporter/*.ndjson
 # {"type":"run.summary",...,"totals":{"events":12,"tests":4,"passed":3,"failed":1,...}}
@@ -216,7 +216,9 @@ Three record kinds, discriminated by `type`:
 | `test.event` | per lifecycle event | `executionId`, `state`, `status`, `timestamp`, `test`, `threadId`, `invocationIndex` |
 | `run.summary` | last line | `totals`, `durationMs` |
 
-`state` is lifecycle — `DISCOVERED`, `QUEUED`, `STARTED`, `IN_PROGRESS`, `FINISHED`.
+`state` is lifecycle — `DISCOVERED`, `STARTED`, `IN_PROGRESS`, `FINISHED`. (`QUEUED` exists in
+the enum but is reserved and never emitted: TestNG exposes no callback between discovery and
+`onTestStart`.)
 `status` is outcome — `UNDETERMINED` until `FINISHED`, then `PASSED`, `FAILED`, `SKIPPED`,
 `IGNORED`, `TIMEOUT`, `INTERRUPTED`, `ERROR`.
 
@@ -246,9 +248,9 @@ Inspect the shipped schema directly:
 
 ```bash
 jq -r '.definitions.testEvent.properties | keys[]' \
-  reporter-json/src/main/resources/schema/testng-live-report-v1.schema.json
+  reporter-json/src/main/resources/schema/testng-live-report-v2.schema.json
 jq -r '.definitions.testEvent.required[]' \
-  reporter-json/src/main/resources/schema/testng-live-report-v1.schema.json
+  reporter-json/src/main/resources/schema/testng-live-report-v2.schema.json
 ```
 
 ---
@@ -499,7 +501,7 @@ ls -t target/testng-live-reporter/ | head -2     # expect a .ndjson and a .json
 | `*.json` | final; `{schemaVersion, run, events[], summary}` |
 
 Record kinds are `run.started`, `test.event`, `run.summary`.
-`state` ∈ DISCOVERED, QUEUED, STARTED, IN_PROGRESS, FINISHED.
+`state` ∈ DISCOVERED, STARTED, IN_PROGRESS, FINISHED (QUEUED is reserved, never emitted).
 `status` ∈ UNDETERMINED (until FINISHED), PASSED, FAILED, SKIPPED, IGNORED, TIMEOUT,
 INTERRUPTED, ERROR.
 `durationMs` only on FINISHED; `failure` only on failures.

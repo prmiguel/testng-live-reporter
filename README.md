@@ -122,8 +122,8 @@ sequenceDiagram
     participant EB as ExecutionEventBus
     participant R as JsonExecutionReporter
 
-    T1->>L: onTestStart(testA)
-    T2->>L: onTestStart(testB)
+    T1->>L: beforeInvocation(testA)
+    T2->>L: beforeInvocation(testB)
     L->>EB: publish(eventA)
     L->>EB: publish(eventB)
     EB->>R: onEvent(eventA)
@@ -145,15 +145,15 @@ Every event has a **state** (where the test is in its lifecycle) and a **status*
 
 | State | Meaning | Terminal? |
 |---|---|---|
-| `DISCOVERED` | The test method is present in the parsed suite/model. | No |
-| `QUEUED` | The method is eligible to run and waiting for a worker thread. | No |
-| `STARTED` | TestNG has called `onTestStart`. | No |
+| `DISCOVERED` | The test method is present in the parsed suite/model. Emitted once per method from `onStart(ITestContext)`. | No |
+| `QUEUED` | **Reserved — never emitted.** TestNG exposes no callback between discovery and `onTestStart`, so publishing it would mean inventing a transition. | No |
+| `STARTED` | TestNG called `beforeInvocation` for this attempt. Emitted once per attempt. | No |
 | `IN_PROGRESS` | The method body is actively executing. | No |
 | `FINISHED` | No further execution events will occur for this attempt. | Yes |
 
-`DISCOVERED` and `QUEUED` may be synthetic if TestNG does not expose a direct
-callback for them. `IN_PROGRESS` is captured between `beforeInvocation` and
-`afterInvocation` hooks when available.
+`DISCOVERED` is synthetic in the sense that it is derived from the parsed model rather than
+from an execution callback, but it reflects a real, checkable fact. `IN_PROGRESS` is captured
+between `beforeInvocation` and `afterInvocation` hooks when available.
 
 ### Status model (outcome)
 
@@ -176,14 +176,15 @@ while infrastructure or unexpected framework problems are `ERROR`.
 ```mermaid
 stateDiagram-v2
     [*] --> DISCOVERED
-    DISCOVERED --> QUEUED
-    QUEUED --> STARTED
+    DISCOVERED --> STARTED
+    DISCOVERED --> FINISHED : excluded by group (IGNORED)
     STARTED --> IN_PROGRESS
     IN_PROGRESS --> FINISHED
     STARTED --> FINISHED : immediate failure/skip
-    QUEUED --> FINISHED : dependency/config failure
     FINISHED --> [*]
 ```
+
+`QUEUED` is intentionally absent: it is reserved and never emitted.
 
 ---
 
@@ -279,9 +280,10 @@ testng-live-reporter/
 │       │   │   ├── ExecutionState.java          # Lifecycle enum
 │       │   │   ├── ExecutionStatus.java         # Outcome enum
 │       │   │   ├── ExecutionEvent.java          # Immutable event record
+│       │   │   ├── RunInfo.java                 # Run-level info for the SPI
 │       │   │   └── TestIdentity.java            # Identity + run-context model
 │       │   └── spi/
-│       │       └── ExecutionReporter.java       # onEvent(...), flush(), close()
+│       │       └── ExecutionReporter.java       # onEvent(...), onRunStarted/Finished, flush(), close()
 │       ├── main/resources/META-INF/services/
 │       │   └── org.testng.ITestNGListener       # SPI registration for auto-use
 │       └── test/java/...                        # Unit + concurrency tests
@@ -351,8 +353,9 @@ testng-live-reporter/
   - **Patch** (`1.0.x`) — bug fixes only, no contract changes.
   - **Minor** (`1.x.0`) — additive changes, backward compatible.
   - **Major** (`x.0.0`) — breaking changes to public API or event schema.
-- Event `schemaVersion` is bumped only when the event structure changes in a
-  non-backward-compatible way.
+- Event `schemaVersion` is bumped when the event structure changes in a
+  non-backward-compatible way. The current version is **2**; `v1` stays published because
+  the record shapes are unchanged.
 
 ---
 
