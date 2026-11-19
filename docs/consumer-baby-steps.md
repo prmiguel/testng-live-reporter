@@ -340,6 +340,32 @@ jq -r --arg e "$EXEC" 'select(.executionId==$e) | "\(.timestamp) \(.state)/\(.st
 tail -f "$F" | jq -c '{t:.type, m:.test.methodName, s:.state, st:.status}'
 ```
 
+### Poll every 5 minutes instead of blocking
+
+When the suite runs in the background, don't sit in `tail -f` and don't wait for it. Print
+one status line on a 5-minute cadence — `cron_create(cron: "*/5 * * * *", …)` in an agent
+session, or `/loop 5m`, or plain `cron`/`sleep 300` outside one:
+
+```bash
+DIR=target/testng-live-reporter
+F=$(ls -t "$DIR"/*.ndjson 2>/dev/null | head -1) || exit 0
+jq -s -r '
+  [.[] | select(.type=="test.event")] as $e
+  | ($e | map(select(.state=="FINISHED"))) as $fin
+  | ($fin | map(.executionId) | unique) as $done
+  | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not)))) as $live
+  | ([.[] | select(.type=="run.summary")] | .[0]) as $s
+  | "\($fin | length) done (\([$fin[]|select(.status=="PASSED")]|length) passed, \([$fin[]|select(.status=="FAILED")]|length) failed) | \($live|map(.executionId)|unique|length) running: \(($live|last//{}).test.methodName // "-") | \(if $s then "finished" else "in progress" end)"' "$F"
+```
+
+```
+1 done (1 passed, 0 failed) | 1 running: dataProviderRow | in progress
+4 done (3 passed, 1 failed) | 0 running: - | finished
+```
+
+Re-read `$F` on every tick — a new execution writes a new filename. Stop once `finished`
+appears and report the final totals from `run.summary`.
+
 ### The consolidated document instead
 
 ```bash
@@ -393,8 +419,8 @@ The directory name **must** match `name:` in the frontmatter, or the skill is sk
 ````markdown
 ---
 name: testng-live-reporting
-description: Install, run, and query testng-live-reporter so TestNG executions emit live JSON reports. Use when asked to add live test reporting to a TestNG project, check which tests are running now, or summarise pass/fail counts from a run that is in progress or finished.
-argument-hint: "[install|check|status|summary|failures] [project-dir]"
+description: Install, run, and query testng-live-reporter so TestNG executions emit live JSON reports. Use when asked to add live test reporting to a TestNG project, check which tests are running now, report progress while tests run in the background, or summarise pass/fail counts from a run that is in progress or finished.
+argument-hint: "[install|check|status|summary|failures|watch] [project-dir]"
 ---
 
 # TestNG live reporting
@@ -408,6 +434,8 @@ produced by the test JVM; this skill installs the jars, then reads those files.
 - Quote real numbers only; if no file exists, say so and show the install step.
 - The stream is append-only, so a status query works mid-run. Do not wait for `run.summary`.
 - Prefer the newest file: `ls -t <dir>/*.ndjson | head -1`.
+- If the suite runs in the background, never block: schedule a 5-minute tick per §7 and
+  report only deltas.
 
 ## 1. Install
 
@@ -505,7 +533,56 @@ Report as: "N tests: X passed, Y failed, Z in progress" plus the names of failur
 numbers look odd, explain that `undetermined` counts STARTED/IN_PROGRESS records, and that
 `totals.tests` counts terminal attempts only.
 
-## 7. Filtering
+If the suite is running in the background, do not block — schedule the tick in §7.
+
+## 7. Report progress every 5 minutes while tests run in the background
+
+A long suite runs detached, so the agent must poll instead of blocking. Use whichever
+scheduling action this session provides — a fixed cron entry is simplest:
+
+```
+cron_create(cron: "*/5 * * * *", prompt: "Report testng-live-reporter progress for <project-dir>", recurring: true)
+```
+
+or, when the agent paces itself, the `loop` skill (`/loop 5m <task>`). Either way each tick
+must be cheap: read the newest report file and print **one line**. Never re-run the suite.
+
+The whole tick — copy it as-is, only `DIR` changes:
+
+```bash
+DIR=target/testng-live-reporter
+F=$(ls -t "$DIR"/*.ndjson 2>/dev/null | head -1) || exit 0
+jq -s -r '
+  [.[] | select(.type=="test.event")] as $e
+  | ($e | map(select(.state=="FINISHED"))) as $fin
+  | ($fin | map(.executionId) | unique) as $done
+  | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not)))) as $live
+  | ([.[] | select(.type=="run.summary")] | .[0]) as $s
+  | "\($fin | length) done (\([$fin[]|select(.status=="PASSED")]|length) passed, \([$fin[]|select(.status=="FAILED")]|length) failed, \([$fin[]|select(.status=="SKIPPED")]|length) skipped) | \($live|map(.executionId)|unique|length) running: \(($live|last//{}).test.methodName // "-") | \(if $s then "finished in \($s.durationMs)ms" else "in progress" end)"' "$F"
+```
+
+Output, verbatim from real runs — mid-run while one test was still executing:
+
+```
+1 done (1 passed, 0 failed, 0 skipped) | 1 running: dataProviderRow | in progress
+```
+
+and again after the run completed:
+
+```
+4 done (3 passed, 1 failed, 0 skipped) | 0 running: - | finished in 10ms
+```
+
+Rules for the tick:
+
+- **Say nothing new if nothing changed.** Repeating identical output every 5 minutes is noise;
+  report deltas (a new failure, a status flip) and stay quiet otherwise.
+- **Finish the loop** once `finished` appears, and report the final totals from
+  `run.summary` in that same tick.
+- **If the file is missing**, report "no report yet" once — do not loop on an error.
+- **Read `$F` again each tick**; the path changes with every execution.
+
+## 8. Filtering
 
 ```bash
 # failures with reasons
@@ -517,7 +594,7 @@ jq -r --arg e "$(jq -r 'select(.type=="test.event")|.executionId' "$F"|head -1)"
   'select(.executionId==$e) | "\(.timestamp) \(.state)/\(.status)"' "$F"
 ```
 
-## 8. Validate the output
+## 9. Validate the output
 
 ```bash
 node .github/scripts/validate-reports.mjs target/testng-live-reporter
@@ -526,7 +603,7 @@ node .github/scripts/validate-reports.mjs target/testng-live-reporter
 If that script is not present, check at minimum that every line parses:
 `jq -c . "$F" > /dev/null` and that the last record is `run.summary`.
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
