@@ -80,6 +80,17 @@ Key design points:
 - **Unique identifier:** stable, deterministic id built from the fully qualified `package.TestClass.testMethod` plus serialized parameters, so parallel and data-provider runs are distinguishable.
 - **Small JARs:** each reporter module declares only its own backend dependency (e.g. SQLite driver only in `reporter-sqlite`); TestNG is `provided` everywhere, since consumers already have it.
 
+### Core concepts to expose
+
+| Concern | Proposal |
+|---|---|
+| **State model** | `STARTED`, `IN_PROGRESS`, `FINISHED` + extensible lifecycle hooks |
+| **Status model** | `PASSED`, `FAILED`, `SKIPPED`, `IGNORED`, `TIMEOUT`, `INTERRUPTED`, `ERROR` |
+| **Unique ID** | `package.ClassName.methodName[params]` + stable deterministic serialization |
+| **Thread safety** | Event queue per reporter + `ConcurrentHashMap`/`BlockingQueue`; never block TestNG threads |
+| **Parallel / data providers** | Track `ITestResult`, `ITestContext`, `IInvokedMethod`; correlate by instance name + method + parameters |
+| **External registration** | Support SPI (`META-INF/services/org.testng.ITestNGListener`) so a JAR dropped on the classpath auto-registers |
+
 ### Versioning and publishing
 
 - Single version for all modules via the CI-friendly `${revision}` property + `flatten-maven-plugin`, e.g. `1.0.0`.
