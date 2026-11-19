@@ -305,8 +305,16 @@ testng-live-reporter/
 │       ├── java/...                             # Parallel, data-provider, SPI E2E suites
 │       └── resources/testng.xml
 │
+├── docs/
+│   └── jitpack-usage.md                         # Injecting the jars, no POM dependency
+│
+├── examples/jitpack-consumer/                   # Runnable consumer, reporter NOT in its pom
+│   ├── pom.xml                                  # TestNG only, on purpose
+│   ├── run.sh                                   # Fetch jars, compile, run, validate
+│   └── src/main/java/demo/SmokeTest.java
+│
 ├── .github/workflows/
-│   ├── ci.yml                                   # Build, tests, dogfood + report validation
+│   ├── ci.yml                                   # Build, tests, dogfood + JitPack injection
 │   ├── compatibility.yml                        # TestNG version matrix (schedule + manual)
 │   ├── codeql.yml                               # CodeQL java-kotlin analysis
 │   └── dependency-review.yml                    # Pull-request dependency review
@@ -385,6 +393,10 @@ JitPack rewrites the internal module dependency to the same requested version, s
 version resolves the whole graph. Note that a build only works for commits that already
 contain `jitpack.yml`, and `1.0.0-SNAPSHOT` in the POM is replaced by the requested version
 at publish time.
+
+Prefer not to declare a dependency at all? [`docs/jitpack-usage.md`](docs/jitpack-usage.md)
+shows how to inject the jars onto a classpath instead, and includes a runnable example in
+[`examples/jitpack-consumer`](examples/jitpack-consumer).
 
 ---
 

@@ -41,6 +41,18 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
 
 - `JsonOutputDogfoodTest` only runs when `-Ddogfood.output-dir` is set, so a plain
   `mvn verify` stays hermetic.
+- `ci.yml`'s `jitpack-injection` job runs `examples/jitpack-consumer/run.sh` against the
+  published JitPack jars for the pushed commit. It is skipped on pull requests because
+  JitPack cannot build fork commits.
+
+## JitPack example
+
+- `examples/jitpack-consumer` is deliberately **not** a reactor module and declares only
+  TestNG; the reporter is injected onto the classpath, which is the point of the example.
+- Do not add the reporter as a dependency there — that would defeat the test.
+- `docs/jitpack-usage.md` documents the whole flow; keep it in sync with `run.sh`.
+- Run it with `cd examples/jitpack-consumer && ./run.sh <version>`; `--verify-only`
+  re-validates existing output without downloading.
 
 ## Module layout
 

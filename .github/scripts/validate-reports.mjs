@@ -7,7 +7,10 @@
 // stock runner without an install step.
 
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const failures = [];
 const fail = (message) => failures.push(message);
@@ -162,7 +165,8 @@ function validateDocument(path, name) {
 }
 
 function validateSchemaArtifact() {
-  const schemaPath = "reporter-json/src/main/resources/schema/testng-live-report-v1.schema.json";
+  // Resolved against the repository root so this works from any working directory.
+  const schemaPath = join(REPO_ROOT, "reporter-json/src/main/resources/schema/testng-live-report-v1.schema.json");
   if (!existsSync(schemaPath)) {
     fail(`${schemaPath}: shipped schema is missing`);
     return;

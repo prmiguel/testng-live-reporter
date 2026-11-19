@@ -50,3 +50,37 @@ jobs:
           path: |
             **/target/surefire-reports/**
             reporter-json/target/dogfood/**
+
+  # Proves the *published* JitPack artifacts work when injected onto a classpath.
+  # Runs on push/manual only: JitPack cannot build commits from forks, and a cold
+  # build for a fresh commit is slow, so this must not gate pull requests.
+  jitpack-injection:
+    name: jitpack injection (published jars)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run the injection example against this commit
+        working-directory: examples/jitpack-consumer
+        env:
+          # A cold JitPack build for a brand-new commit can take a while, so allow
+          # a longer window here than the interactive default.
+          JITPACK_MAX_ATTEMPTS: "40"
+        run: ./run.sh "${GITHUB_SHA::7}"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jitpack-injection-reports
+          retention-days: 7
+          if-no-files-found: ignore
+          path: examples/jitpack-consumer/target/testng-live-reporter/**
