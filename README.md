@@ -306,7 +306,8 @@ testng-live-reporter/
 │       └── resources/testng.xml
 │
 ├── docs/
-│   └── jitpack-usage.md                         # Injecting the jars, no POM dependency
+│   ├── jitpack-usage.md                         # Injecting the jars, no POM dependency
+│   └── consumer-baby-steps.md                   # Step-by-step cookbook + Agent Skill
 │
 ├── examples/jitpack-consumer/                   # Runnable consumer, reporter NOT in its pom
 │   ├── pom.xml                                  # TestNG only, on purpose
@@ -397,6 +398,10 @@ at publish time.
 Prefer not to declare a dependency at all? [`docs/jitpack-usage.md`](docs/jitpack-usage.md)
 shows how to inject the jars onto a classpath instead, and includes a runnable example in
 [`examples/jitpack-consumer`](examples/jitpack-consumer).
+
+New to the project? [`docs/consumer-baby-steps.md`](docs/consumer-baby-steps.md) is the
+linear cookbook: download → copy → register → check → run → read and filter the output, plus
+a ready-made Agent Skill you can drop into another repository.
 
 ---
 
