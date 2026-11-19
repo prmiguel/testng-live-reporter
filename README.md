@@ -315,7 +315,8 @@ testng-live-reporter/
 │
 ├── docs/
 │   ├── jitpack-usage.md                         # Injecting the jars, no POM dependency
-│   └── consumer-baby-steps.md                   # Step-by-step cookbook + Agent Skill
+│   ├── consumer-baby-steps.md                   # Step-by-step cookbook + Agent Skill
+│   └── testng-listeners.md                      # Every TestNG listener interface + samples
 │
 ├── examples/jitpack-consumer/                   # Runnable consumer, reporter NOT in its pom
 │   ├── pom.xml                                  # TestNG only, on purpose
@@ -411,6 +412,11 @@ shows how to inject the jars onto a classpath instead, and includes a runnable e
 New to the project? [`docs/consumer-baby-steps.md`](docs/consumer-baby-steps.md) is the
 linear cookbook: download → copy → register → check → run → read and filter the output, plus
 a ready-made Agent Skill you can drop into another repository.
+
+Wondering which TestNG listener interface to implement?
+[`docs/testng-listeners.md`](docs/testng-listeners.md) covers all 17 of them — what each is
+good for, a compileable sample, and the pitfalls (`IHookable` silently skipping a test,
+`onConfigurationFailure` being called twice, ServiceLoader creating a second instance).
 
 ---
 
