@@ -25,9 +25,10 @@ mvn -pl core test -Dtest=LiveReportingListenerIntegrationTest
 
 ## Module layout
 
-- Maven multi-module project; only `core` exists today.
+- Maven multi-module project; `core` and `reporter-json` exist today.
 - `core` artifact: `io.github.prmiguel:testng-live-reporter-core`.
-- Reporter modules (`reporter-json`, etc.) are planned but not implemented yet.
+- `reporter-json` artifact: `io.github.prmiguel:testng-live-reporter-json`.
+- Remaining reporters (`reporter-sqlite`, `reporter-cache-db`, `reporter-ctrf`) are planned but not implemented yet.
 - `README.md` still documents some planned work; treat the code as the source of truth.
 
 ## Architecture notes

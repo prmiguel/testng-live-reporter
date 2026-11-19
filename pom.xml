@@ -29,6 +29,7 @@
 
     <modules>
         <module>core</module>
+        <module>reporter-json</module>
     </modules>
 
     <dependencyManagement>

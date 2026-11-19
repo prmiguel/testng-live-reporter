@@ -256,8 +256,8 @@ without losing the stable identity of the underlying test.
 
 | Module | ArtifactId | Purpose | Status |
 |---|---|---|---|
-| `core` | `testng-live-reporter-core` | Listener base, state/status model, identity generation, event bus, SPI | First milestone |
-| `reporter-json` | `testng-live-reporter-json` | Live JSON execution stream | First milestone |
+| `core` | `testng-live-reporter-core` | Listener base, state/status model, identity generation, event bus, SPI | Implemented |
+| `reporter-json` | `testng-live-reporter-json` | Live JSON execution stream + consolidated document | Implemented |
 | `reporter-sqlite` | `testng-live-reporter-sqlite` | SQLite persistence | Planned |
 | `reporter-cache-db` | `testng-live-reporter-cache-db` | Local cached DB (e.g. H2/MapDB) | Planned |
 | `reporter-ctrf` | `testng-live-reporter-ctrf` | Common Test Report Format output | Planned |
@@ -287,8 +287,14 @@ testng-live-reporter/
 │       └── test/java/...                        # Unit + concurrency tests
 │
 ├── reporter-json/                               # artifactId: testng-live-reporter-json        (depends: core)
-│   └── src/main/java/io/github/prmiguel/testng/live/json/
-│       └── JsonExecutionReporter.java           # Streams events as JSON
+│   ├── src/main/java/io/github/prmiguel/testng/live/json/
+│   │   ├── JsonExecutionReporter.java            # Live NDJSON stream + consolidated document
+│   │   ├── JsonReporterConfiguration.java        # Property/env/file configuration
+│   │   └── spi/EventRecordEncoder.java           # Backend seam shared with future reporters
+│   ├── src/main/resources/
+│   │   ├── META-INF/services/…ExecutionReporter  # SPI registration
+│   │   └── schema/testng-live-report-v1.schema.json
+│   └── README.md                                 # Properties, formats, known limitations
 │
 ├── reporter-sqlite/                             # Planned
 ├── reporter-cache-db/                           # Planned
@@ -375,20 +381,42 @@ Public releases are also available through JitPack without authentication:
 
 ## 🔌 External usage
 
-### 1. Maven dependency + `testng.xml`
+### 1. Maven dependency + classpath
 
-Add the reporter as a dependency and declare it in the suite:
+Add the reporter as a test dependency and let `ServiceLoader` attach it to the core
+listener. The reporter is **not** an `ITestNGListener`, so it must not be declared in
+`<listeners>`; see [`reporter-json/README.md`](reporter-json/README.md) for the full
+property reference.
+
+```xml
+<dependency>
+    <groupId>io.github.prmiguel</groupId>
+    <artifactId>testng-live-reporter-core</artifactId>
+    <version>1.0.0</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>io.github.prmiguel</groupId>
+    <artifactId>testng-live-reporter-json</artifactId>
+    <version>1.0.0</version>
+    <scope>test</scope>
+</dependency>
+```
+
+If explicit registration is required, register the core *listener* only:
 
 ```xml
 <listeners>
-    <listener class-name="io.github.prmiguel.testng.live.json.JsonExecutionReporter"/>
+    <listener class-name="io.github.prmiguel.testng.live.core.LiveReportingListener"/>
 </listeners>
 ```
 
 ### 2. SPI auto-registration
 
-Place the JAR on the test classpath. The `META-INF/services/org.testng.ITestNGListener`
-file inside the JAR makes TestNG load the reporter automatically.
+Place both JARs on the test classpath. Two service files do the work:
+`META-INF/services/org.testng.ITestNGListener` (in `core`) makes TestNG load the listener,
+and `META-INF/services/io.github.prmiguel.testng.live.core.spi.ExecutionReporter` (in
+`reporter-json`) attaches the JSON reporter to it.
 
 ### 3. External JAR without editing project source
 
