@@ -56,6 +56,8 @@ class LiveReportingListenerIntegrationTest {
         TestNG testNG = new TestNG();
         testNG.setTestClasses(new Class[]{SampleTests.class});
         testNG.setExcludedGroups("excluded");
+        testNG.setListenersToSkipFromBeingWiredInViaServiceLoaders(
+                "io.github.prmiguel.testng.live.core.LiveReportingListener");
         testNG.addListener(listener);
         testNG.run();
 
@@ -150,6 +152,8 @@ class LiveReportingListenerIntegrationTest {
         TestNG testNG = new TestNG();
         testNG.setTestClasses(new Class[]{RetriedFixture.class});
         testNG.setUseDefaultListeners(false);
+        testNG.setListenersToSkipFromBeingWiredInViaServiceLoaders(
+                "io.github.prmiguel.testng.live.core.LiveReportingListener");
         testNG.addListener(listener);
         testNG.run();
 
@@ -172,6 +176,9 @@ class LiveReportingListenerIntegrationTest {
         testNG.setTestClasses(new Class[]{SampleTests.class});
         testNG.setExcludedGroups("excluded");
         testNG.setUseDefaultListeners(false);
+        // Skip the ServiceLoader-wired twin so exactly one listener is observed.
+        testNG.setListenersToSkipFromBeingWiredInViaServiceLoaders(
+                "io.github.prmiguel.testng.live.core.LiveReportingListener");
         testNG.addListener(listener);
         testNG.run();
         return reporter;

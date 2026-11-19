@@ -197,6 +197,25 @@ Reports carry `schemaVersion`. Version **2** is current. Version **1** remains p
 `schema/testng-live-report-v1.schema.json`: the record shapes did not change, so a v1
 consumer can read v2 output, and the only difference is which states actually occur.
 
+## Configuration failures
+
+A `@BeforeMethod`/`@BeforeClass`/`@After*` method that throws is reported as an ordinary
+`test.event` — no new record type — with:
+
+```json
+{"type":"test.event","state":"FINISHED","status":"ERROR",
+ "attributes":{"phase":"configuration","configurationKind":"beforeMethod"},
+ "failure":{"type":"java.lang.IllegalStateException","message":"setup exploded"}}
+```
+
+- The affected tests still appear as `SKIPPED`; this record is what explains *why*.
+- `totals.configurationFailures` counts them, and they are excluded from `totals.tests` and
+  from the per-status counters, so suite totals stay comparable with earlier runs.
+- The `phase` attribute is written even when `include-attributes=false`, and the record is
+  exempt from `include-statuses` filtering, because hiding it would hide the root cause.
+- `configurationKind` is best-effort (`beforeMethod`, `afterClass`, …) and falls back to
+  `configuration`.
+
 ---
 
 ## Tests

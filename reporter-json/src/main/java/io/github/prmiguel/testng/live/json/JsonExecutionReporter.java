@@ -1,5 +1,6 @@
 package io.github.prmiguel.testng.live.json;
 
+import io.github.prmiguel.testng.live.core.internal.ExecutionEventFactory;
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
 import io.github.prmiguel.testng.live.core.model.RunInfo;
 import io.github.prmiguel.testng.live.core.spi.ExecutionReporter;
@@ -116,7 +117,8 @@ public final class JsonExecutionReporter implements ExecutionReporter {
             totals.eventFiltered();
             return;
         }
-        if (!acceptedAttemptStates.add(event.executionId() + '\u0000' + event.state())) {
+        if (!acceptedAttemptStates.add(event.executionId() + '\u0000' + event.state() + '\u0000'
+                + event.attributes().getOrDefault(ExecutionEventFactory.PHASE_ATTRIBUTE, "test"))) {
             totals.duplicateDropped();
             return;
         }

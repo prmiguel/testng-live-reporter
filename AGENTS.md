@@ -80,6 +80,12 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
 - `ExecutionState.QUEUED` is reserved and never emitted; TestNG has no callback for it.
 - `ExecutionTrackerRegistry` keeps only in-flight attempts; `complete()` must be called
   after the terminal event is published, never before.
+- Configuration-method failures (`IConfigurationListener`) are published as ordinary
+  `test.event` records with `attributes.phase=configuration`, not as a new record type.
+  Classification is callback-driven, so no `ITestNGMethod` predicate is required.
+- In `onConfigurationFailure(ITestResult, ITestNGMethod)` the **second argument is the test
+  method**, while `result.getMethod()` is the configuration method that threw. TestNG calls
+  both overloads, so implement only the two-argument form or every failure is published twice.
 - Test identity hashes are the first 16 lowercase hex characters of SHA-256.
 
 ## Testing quirks
@@ -89,6 +95,11 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
 - `SampleTests.excludedTest` is in the `excluded` group so the suite produces a real `IGNORED` record.
 - The integration test asserts 7 terminal events (6 executed + 1 ignored) and unique `executionId` values for attempts.
 - Running `reporter-json` tests without `-am` resolves `core` from `~/.m2`, which silently validates against a **stale** jar and can fake a regression. Use `mvn -pl reporter-json -am test`.
+- `core` registers itself in `META-INF/services/org.testng.ITestNGListener`, and TestNG also
+  auto-loads listeners from that file. Any test that injects its own `LiveReportingListener`
+  therefore has **two** instances with separate event buses; call
+  `setListenersToSkipFromBeingWiredInViaServiceLoaders("io.github.prmiguel.testng.live.core.LiveReportingListener")`
+  and assert on the injected one only.
 
 ## Conventions
 

@@ -1,5 +1,6 @@
 package io.github.prmiguel.testng.live.json.internal;
 
+import io.github.prmiguel.testng.live.core.internal.ExecutionEventFactory;
 import io.github.prmiguel.testng.live.core.model.CanonicalParameter;
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
 import io.github.prmiguel.testng.live.core.model.FailureInfo;
@@ -82,7 +83,9 @@ public final class JsonEventRecordEncoder implements EventRecordEncoder {
             writer.name("failure");
             writeFailure(writer, failure);
         }
-        if (includeAttributes) {
+        if (includeAttributes || event.attributes().containsKey(ExecutionEventFactory.PHASE_ATTRIBUTE)) {
+            // The phase marker is never optional: without it a configuration failure is
+            // indistinguishable from an ordinary test failure.
             writer.name("attributes");
             writeAttributes(writer, event.attributes());
         }
@@ -111,6 +114,7 @@ public final class JsonEventRecordEncoder implements EventRecordEncoder {
                 .name("interrupted").value(totals.interrupted())
                 .name("error").value(totals.error())
                 .name("undetermined").value(totals.undetermined())
+                .name("configurationFailures").value(totals.configurationFailures())
                 .name("droppedDuplicates").value(totals.droppedDuplicates())
                 .name("filtered").value(totals.filtered())
                 .name("writeErrors").value(totals.writeErrors())

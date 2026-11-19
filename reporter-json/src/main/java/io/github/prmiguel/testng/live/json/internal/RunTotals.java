@@ -1,5 +1,6 @@
 package io.github.prmiguel.testng.live.json.internal;
 
+import io.github.prmiguel.testng.live.core.internal.ExecutionEventFactory;
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
 import io.github.prmiguel.testng.live.core.model.ExecutionStatus;
 
@@ -8,6 +9,12 @@ import io.github.prmiguel.testng.live.core.model.ExecutionStatus;
  * <p>
  * Instances are confined to the reporter's single event dispatcher, so they need no
  * synchronization. Distinct executions are counted from terminal events only.
+ * <p>
+ * Configuration-method failures are reported as {@code test.event} records with a
+ * {@code phase=configuration} attribute. They are counted separately and are deliberately
+ * excluded from the status counters and from {@code tests}: the affected test already
+ * contributes a {@code SKIPPED} record, so counting the cause as well would inflate the
+ * suite totals.
  */
 public final class RunTotals {
 
@@ -20,6 +27,7 @@ public final class RunTotals {
     private long interrupted;
     private long error;
     private long undetermined;
+    private long configurationFailures;
     private long droppedDuplicates;
     private long filtered;
     private long writeErrors;
@@ -31,6 +39,10 @@ public final class RunTotals {
      */
     public void accept(ExecutionEvent event) {
         events++;
+        if (isConfigurationFailure(event)) {
+            configurationFailures++;
+            return;
+        }
         switch (event.status()) {
             case PASSED -> passed++;
             case FAILED -> failed++;
@@ -41,6 +53,18 @@ public final class RunTotals {
             case ERROR -> error++;
             case UNDETERMINED -> undetermined++;
         }
+    }
+
+    /**
+     * Returns true when the event describes a configuration method failure rather than a
+     * test outcome.
+     *
+     * @param event event to inspect
+     * @return true for configuration failures
+     */
+    public static boolean isConfigurationFailure(ExecutionEvent event) {
+        return ExecutionEventFactory.PHASE_CONFIGURATION.equals(
+                event.attributes().get(ExecutionEventFactory.PHASE_ATTRIBUTE));
     }
 
     public void duplicateDropped() {
@@ -61,7 +85,7 @@ public final class RunTotals {
     public Snapshot snapshot() {
         long tests = passed + failed + skipped + ignored + timeout + interrupted + error;
         return new Snapshot(events, tests, passed, failed, skipped, ignored, timeout, interrupted, error,
-                undetermined, droppedDuplicates, filtered, writeErrors);
+                undetermined, configurationFailures, droppedDuplicates, filtered, writeErrors);
     }
 
     /**
@@ -69,6 +93,6 @@ public final class RunTotals {
      */
     public record Snapshot(long events, long tests, long passed, long failed, long skipped, long ignored,
                            long timeout, long interrupted, long error, long undetermined,
-                           long droppedDuplicates, long filtered, long writeErrors) {
+                           long configurationFailures, long droppedDuplicates, long filtered, long writeErrors) {
     }
 }

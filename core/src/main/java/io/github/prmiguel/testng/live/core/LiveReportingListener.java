@@ -12,6 +12,7 @@ import io.github.prmiguel.testng.live.core.model.RunInfo;
 import io.github.prmiguel.testng.live.core.model.TestIdentity;
 import io.github.prmiguel.testng.live.core.spi.ExecutionReporter;
 import io.github.prmiguel.testng.live.core.spi.ParameterCanonicalizer;
+import org.testng.IConfigurationListener;
 import org.testng.IExecutionListener;
 import org.testng.IInvokedMethod;
 import org.testng.IInvokedMethodListener;
@@ -34,7 +35,9 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Core TestNG listener that publishes live execution events to registered reporters.
@@ -43,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * listener is safe for parallel execution and data-provider invocations.
  */
 public class LiveReportingListener implements IExecutionListener, ISuiteListener, ITestListener,
-        IInvokedMethodListener, ITestNGListener {
+        IInvokedMethodListener, IConfigurationListener, ITestNGListener {
 
     private static final Logger LOGGER = System.getLogger(LiveReportingListener.class.getName());
 
@@ -54,6 +57,7 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
     private final AtomicBoolean started = new AtomicBoolean(false);
     private final InvocationCounter invocationCounter = new InvocationCounter();
     private final Set<String> discovered = ConcurrentHashMap.newKeySet();
+    private final ConcurrentMap<String, AtomicInteger> nonAttemptCounters = new ConcurrentHashMap<>();
     private volatile ExecutionEventBus eventBus;
     private volatile ExecutionTrackerRegistry registry;
     private volatile ExecutionEventFactory eventFactory;
@@ -119,12 +123,13 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
         for (ITestNGMethod method : context.getAllTestMethods()) {
             TestIdentity identity = idGenerator.createIdentity(method);
             if (discovered.add(identity.testId())) {
-                publish(eventFactory.discovered(identity, suiteName, testName));
+                publish(eventFactory.discovered(identity, nonAttemptId(identity, "discovered"),
+                        suiteName, testName));
             }
         }
         for (ITestNGMethod method : context.getExcludedMethods()) {
             TestIdentity identity = idGenerator.createIdentity(method);
-            publish(eventFactory.ignored(identity, suiteName, testName));
+            publish(eventFactory.ignored(identity, nonAttemptId(identity, "ignored"), suiteName, testName));
         }
     }
 
@@ -187,6 +192,65 @@ public class LiveReportingListener implements IExecutionListener, ISuiteListener
         Map<String, String> attributes = new HashMap<>();
         attributes.put("successPercentageFailure", "true");
         finish(result, ExecutionStatus.FAILED, failure, attributes);
+    }
+
+    @Override
+    public void onConfigurationFailure(ITestResult result, ITestNGMethod method) {
+        // Only the two-argument overload is implemented: TestNG calls both overloads, so
+        // implementing the one-argument form as well would publish every failure twice.
+        if (eventFactory == null) {
+            return;
+        }
+        ITestContext context = result.getTestContext();
+        String suiteName = context != null && context.getSuite() != null ? context.getSuite().getName() : "unknown";
+        String testName = context != null ? context.getName() : "unknown";
+        // result.getMethod() is the configuration method that threw; the second argument is
+        // the test method it was preparing, so the identity and kind come from the result.
+        ITestNGMethod failed = result.getMethod() != null ? result.getMethod() : method;
+        TestIdentity identity = idGenerator.createIdentity(failed);
+
+        publish(eventFactory.configurationFailure(
+                identity,
+                nonAttemptId(identity, "configuration"),
+                ExecutionEventFactory.failureInfo(result.getThrowable()),
+                suiteName,
+                testName,
+                configurationKind(failed),
+                result.getStartMillis(),
+                result.getEndMillis()));
+    }
+
+    /**
+     * Classifies a configuration method for the {@code configurationKind} attribute. Best
+     * effort only: a missing predicate degrades to plain {@code configuration}.
+     */
+    private static String configurationKind(ITestNGMethod method) {
+        if (method == null) {
+            return "configuration";
+        }
+        if (method.isBeforeMethodConfiguration()) return "beforeMethod";
+        if (method.isAfterMethodConfiguration()) return "afterMethod";
+        if (method.isBeforeClassConfiguration()) return "beforeClass";
+        if (method.isAfterClassConfiguration()) return "afterClass";
+        if (method.isBeforeTestConfiguration()) return "beforeTest";
+        if (method.isAfterTestConfiguration()) return "afterTest";
+        if (method.isBeforeSuiteConfiguration()) return "beforeSuite";
+        if (method.isAfterSuiteConfiguration()) return "afterSuite";
+        if (method.isBeforeGroupsConfiguration()) return "beforeGroups";
+        if (method.isAfterGroupsConfiguration()) return "afterGroups";
+        return "configuration";
+    }
+
+    /**
+     * Builds an identifier for a record that is not an execution attempt, so "one id per
+     * attempt" still holds for consumers. The counter keeps repeated failures of the same
+     * method (for example behind a data provider) distinct instead of collapsing them.
+     */
+    private String nonAttemptId(TestIdentity identity, String kind) {
+        int index = nonAttemptCounters
+                .computeIfAbsent(kind + '\u0000' + identity.hash(), key -> new AtomicInteger(0))
+                .getAndIncrement();
+        return configuration.runId() + "-" + identity.hash() + "-" + kind + "-" + index;
     }
 
     private ExecutionAttempt ensureAttempt(ITestResult result) {

@@ -54,6 +54,15 @@ public final class TestEvents {
                 Duration.ofMillis(12), failure, Map.of());
     }
 
+    public static ExecutionEvent configurationFailure(String runId, String executionId, TestIdentity identity,
+                                                     String configurationKind) {
+        return create(runId, executionId, identity, ExecutionState.FINISHED, ExecutionStatus.ERROR,
+                Duration.ofMillis(4),
+                new FailureInfo("java.lang.IllegalStateException", "setup exploded",
+                        "java.lang.IllegalStateException: setup exploded"),
+                Map.of("phase", "configuration", "configurationKind", configurationKind));
+    }
+
     public static ExecutionEvent create(String runId, String executionId, TestIdentity identity,
                                  ExecutionState state, ExecutionStatus status, Duration duration,
                                  FailureInfo failure, Map<String, String> attributes) {

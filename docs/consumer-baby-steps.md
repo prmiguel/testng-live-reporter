@@ -244,6 +244,22 @@ Notes that save time:
 - `executionId` identifies one attempt; two data-provider rows differ in `parameters` **and**
   in `hash`, so they never collide.
 
+### Configuration failures
+
+A failing `@BeforeMethod`/`@BeforeClass`/`@After*` is **not** a new record type: it arrives as
+a `test.event` with `state: FINISHED`, `status: ERROR` and `attributes.phase: "configuration"`
+(plus `configurationKind`, e.g. `beforeMethod`). The affected tests still appear as `SKIPPED`,
+so the pair explains itself.
+
+```bash
+jq -r 'select(.attributes.phase=="configuration")
+       | "\(.test.methodName) \(.attributes.configurationKind): \(.failure.type)"' "$F"
+```
+
+`phase` is always written, even with `testng.live.json.include-attributes=false`, and these
+records are never filtered by a status whitelist. They are counted in
+`totals.configurationFailures`, **not** in `totals.tests` or `totals.error`.
+
 Inspect the shipped schema directly:
 
 ```bash
@@ -292,8 +308,8 @@ same file mid-run because each record is flushed as it is written:
 
 ```bash
 jq -s -r '
-  [.[] | select(.type=="test.event")] as $e
-  | ($e | map(select(.state=="FINISHED") | .executionId) | unique) as $done
+  [.[] | select(.type=="test.event" and (.attributes.phase // "test") == "test")] as $e
+  | ($e | map(select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")) | .executionId) | unique) as $done
   | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not))))
   | {stillRunning: (map(.executionId) | unique | length), openEvents: length}' "$F"
 ```
@@ -312,14 +328,14 @@ jq -r 'select(.type=="test.event" and .status=="FAILED")
 ### Filter: only terminal outcomes (one line per test)
 
 ```bash
-jq -r 'select(.state=="FINISHED")
+jq -r 'select(.state=="FINISHED" and ((.attributes.phase // "test") == "test"))
        | "\(.status)\t\(.test.readableKey)"' "$F" | sort
 ```
 
 ### Filter: slowest tests
 
 ```bash
-jq -r 'select(.state=="FINISHED") | "\(.durationMs)\t\(.test.methodName)"' "$F" | sort -rn | head -5
+jq -r 'select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")) | "\(.durationMs)\t\(.test.methodName)"' "$F" | sort -rn | head -5
 ```
 
 ### Filter: one test across data-provider rows
@@ -352,8 +368,8 @@ session, or `/loop 5m`, or plain `cron`/`sleep 300` outside one:
 DIR=target/testng-live-reporter
 F=$(ls -t "$DIR"/*.ndjson 2>/dev/null | head -1) || exit 0
 jq -s -r '
-  [.[] | select(.type=="test.event")] as $e
-  | ($e | map(select(.state=="FINISHED"))) as $fin
+  [.[] | select(.type=="test.event" and (.attributes.phase // "test") == "test")] as $e
+  | ($e | map(select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")))) as $fin
   | ($fin | map(.executionId) | unique) as $done
   | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not)))) as $live
   | ([.[] | select(.type=="run.summary")] | .[0]) as $s
@@ -388,6 +404,7 @@ jq -r '.events[] | select(.status=="FAILED") | .test.readableKey' target/testng-
 | `UnsupportedClassVersionError` | JDK older than 21 | switch to JDK 21 |
 | Two files per run | expected | one `.ndjson` + one `.json` |
 | `undetermined` looks too high | it counts `STARTED`/`IN_PROGRESS` | use `tests`, or filter `state=="FINISHED"` |
+| A `@BeforeMethod` failure shows as `SKIPPED` | that is TestNG's report of the test | look for the `attributes.phase=="configuration"` record for the cause |
 
 ---
 
@@ -519,8 +536,8 @@ In progress — no summary exists yet, derive it:
 
 ```bash
 jq -s -r '
-  [.[] | select(.type=="test.event")] as $e
-  | ($e | map(select(.state=="FINISHED") | .executionId) | unique) as $done
+  [.[] | select(.type=="test.event" and (.attributes.phase // "test") == "test")] as $e
+  | ($e | map(select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")) | .executionId) | unique) as $done
   | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not))))
   | {stillRunning: (map(.executionId) | unique | length), openEvents: length}' "$F"
 ```
@@ -555,8 +572,8 @@ The whole tick — copy it as-is, only `DIR` changes:
 DIR=target/testng-live-reporter
 F=$(ls -t "$DIR"/*.ndjson 2>/dev/null | head -1) || exit 0
 jq -s -r '
-  [.[] | select(.type=="test.event")] as $e
-  | ($e | map(select(.state=="FINISHED"))) as $fin
+  [.[] | select(.type=="test.event" and (.attributes.phase // "test") == "test")] as $e
+  | ($e | map(select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")))) as $fin
   | ($fin | map(.executionId) | unique) as $done
   | ($e | map(select((.state != "FINISHED") and ((.executionId as $id | $done | index($id)) | not)))) as $live
   | ([.[] | select(.type=="run.summary")] | .[0]) as $s
@@ -590,7 +607,7 @@ Rules for the tick:
 # failures with reasons
 jq -r 'select(.status=="FAILED") | "\(.test.readableKey): \(.failure.message)"' "$F"
 # slowest
-jq -r 'select(.state=="FINISHED") | "\(.durationMs)\t\(.test.methodName)"' "$F" | sort -rn | head -5
+jq -r 'select(.state=="FINISHED" and ((.attributes.phase // "test") == "test")) | "\(.durationMs)\t\(.test.methodName)"' "$F" | sort -rn | head -5
 # one attempt end to end
 jq -r --arg e "$(jq -r 'select(.type=="test.event")|.executionId' "$F"|head -1)" \
   'select(.executionId==$e) | "\(.timestamp) \(.state)/\(.status)"' "$F"

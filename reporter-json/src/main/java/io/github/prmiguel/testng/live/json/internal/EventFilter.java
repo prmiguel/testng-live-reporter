@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * explains a later terminal event; status filtering applies to finished events only.
  * {@code DISCOVERED} is non-terminal, so it survives a status whitelist such as
  * {@code FAILED,TIMEOUT}; {@code IGNORED} is terminal and is therefore filtered like any
- * other outcome.
+ * other outcome. Configuration failures are never filtered at all.
  */
 public final class EventFilter {
 
@@ -38,6 +38,11 @@ public final class EventFilter {
      * @return true when accepted
      */
     public boolean accepts(ExecutionEvent event) {
+        if (RunTotals.isConfigurationFailure(event)) {
+            // Never hide the root cause behind a status whitelist: the affected test already
+            // shows up as SKIPPED and this record explains why.
+            return true;
+        }
         String className = event.testIdentity().className();
         String methodName = event.testIdentity().methodName();
 

@@ -171,6 +171,12 @@ between `beforeInvocation` and `afterInvocation` hooks when available.
 `FAILED` vs `ERROR` is a best-effort classification: assertion failures are `FAILED`,
 while infrastructure or unexpected framework problems are `ERROR`.
 
+A configuration method (`@BeforeMethod`, `@BeforeClass`, `@After*`) that throws is reported
+as a `test.event` with `FINISHED`/`ERROR` and `attributes.phase = "configuration"` — there is
+no separate record type. The tests it prevented from running are reported as `SKIPPED`
+separately, so the two records together explain each other. Configuration failures are
+counted in `totals.configurationFailures` and excluded from `totals.tests`.
+
 ### State transition diagram
 
 ```mermaid

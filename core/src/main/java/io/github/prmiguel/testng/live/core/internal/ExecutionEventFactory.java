@@ -23,6 +23,10 @@ import java.util.Map;
  */
 public final class ExecutionEventFactory {
 
+    /** Attribute marking a record as a configuration-method failure rather than a test. */
+    public static final String PHASE_ATTRIBUTE = "phase";
+    public static final String PHASE_CONFIGURATION = "configuration";
+
     private final String runId;
     private final ExecutionEventBus bus;
 
@@ -31,14 +35,40 @@ public final class ExecutionEventFactory {
         this.bus = bus;
     }
 
-    public ExecutionEvent discovered(TestIdentity identity, String suiteName, String testName) {
-        return terminalOrPending(identity, null, ExecutionState.DISCOVERED, ExecutionStatus.UNDETERMINED,
+    public ExecutionEvent discovered(TestIdentity identity, String executionId, String suiteName, String testName) {
+        return record(identity, executionId, ExecutionState.DISCOVERED, ExecutionStatus.UNDETERMINED,
                 null, null, Collections.emptyMap(), suiteName, testName, 0, 0);
     }
 
-    public ExecutionEvent ignored(TestIdentity identity, String suiteName, String testName) {
-        return terminalOrPending(identity, null, ExecutionState.FINISHED, ExecutionStatus.IGNORED,
+    public ExecutionEvent ignored(TestIdentity identity, String executionId, String suiteName, String testName) {
+        return record(identity, executionId, ExecutionState.FINISHED, ExecutionStatus.IGNORED,
                 Duration.ZERO, null, Collections.emptyMap(), suiteName, testName, 0, 0);
+    }
+
+    /**
+     * Builds a terminal event for a configuration method (a {@code @Before*}/{@code @After*}
+     * method) that threw. It is deliberately shaped like a {@code test.event} so consumers
+     * need no new record type; the {@code phase} attribute is what distinguishes it.
+     *
+     * @param identity          method that failed
+     * @param executionId       unique id for this failure, not shared with any attempt
+     * @param failure           the throwable TestNG reported
+     * @param suiteName         suite name, or {@code unknown} when no context is available
+     * @param testName          test name, or {@code unknown} when no context is available
+     * @param configurationKind best-effort classification, e.g. {@code beforeMethod}
+     * @param startMillis       TestNG start timestamp, or a non-positive value
+     * @param endMillis         TestNG end timestamp, or a non-positive value
+     * @return the failure event
+     */
+    public ExecutionEvent configurationFailure(TestIdentity identity, String executionId, FailureInfo failure,
+                                              String suiteName, String testName, String configurationKind,
+                                              long startMillis, long endMillis) {
+        Duration duration = testNgDuration(startMillis, endMillis);
+        Map<String, String> attributes = Map.of(
+                PHASE_ATTRIBUTE, PHASE_CONFIGURATION,
+                "configurationKind", configurationKind);
+        return record(identity, executionId, ExecutionState.FINISHED, ExecutionStatus.ERROR,
+                duration == null ? Duration.ZERO : duration, failure, attributes, suiteName, testName, 0, 0);
     }
 
     public ExecutionEvent started(ExecutionAttempt attempt) {
@@ -80,20 +110,20 @@ public final class ExecutionEventFactory {
 
     private ExecutionEvent create(ExecutionAttempt attempt, ExecutionState state, ExecutionStatus status,
                                   Duration duration, FailureInfo failure, Map<String, String> attributes) {
-        return terminalOrPending(attempt.testIdentity(), attempt, state, status, duration, failure, attributes,
+        return record(attempt.testIdentity(), attempt.executionId(), state, status, duration, failure, attributes,
                 attempt.suiteName(), attempt.testName(), attempt.invocationIndex(), attempt.retryAttempt());
     }
 
-    private ExecutionEvent terminalOrPending(TestIdentity identity, ExecutionAttempt attempt, ExecutionState state,
-                                             ExecutionStatus status, Duration duration, FailureInfo failure,
-                                             Map<String, String> attributes, String suiteName, String testName,
-                                             int invocationIndex, int retryAttempt) {
+    private ExecutionEvent record(TestIdentity identity, String executionId, ExecutionState state,
+                                  ExecutionStatus status, Duration duration, FailureInfo failure,
+                                  Map<String, String> attributes, String suiteName, String testName,
+                                  int invocationIndex, int retryAttempt) {
         Thread thread = Thread.currentThread();
         return new ExecutionEvent(
                 ExecutionEvent.CURRENT_SCHEMA_VERSION,
                 bus.nextSequence(),
                 runId,
-                attempt != null ? attempt.executionId() : nonAttemptExecutionId(identity, state),
+                executionId,
                 identity,
                 state,
                 status,
@@ -108,14 +138,6 @@ public final class ExecutionEventFactory {
                 failure,
                 attributes
         );
-    }
-
-    /**
-     * Builds an identifier for a record that is not an execution attempt. Keeping it
-     * distinct from attempt ids means "one id per attempt" still holds for consumers.
-     */
-    private String nonAttemptExecutionId(TestIdentity identity, ExecutionState state) {
-        return runId + "-" + identity.hash() + "-" + state.name().toLowerCase();
     }
 
     public static FailureInfo failureInfo(Throwable throwable) {

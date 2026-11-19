@@ -43,7 +43,8 @@
     "totals": {
       "type": "object",
       "required": ["events", "tests", "passed", "failed", "skipped", "ignored", "timeout",
-                   "interrupted", "error", "undetermined", "droppedDuplicates", "filtered", "writeErrors"],
+                   "interrupted", "error", "undetermined", "configurationFailures", "droppedDuplicates",
+                   "filtered", "writeErrors"],
       "additionalProperties": false,
       "properties": {
         "events": { "type": "integer", "minimum": 0 },
@@ -56,6 +57,11 @@
         "interrupted": { "type": "integer", "minimum": 0 },
         "error": { "type": "integer", "minimum": 0 },
         "undetermined": { "type": "integer", "minimum": 0 },
+        "configurationFailures": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Records with attributes.phase == 'configuration'. Excluded from tests and from the status counters."
+        },
         "droppedDuplicates": { "type": "integer", "minimum": 0 },
         "filtered": { "type": "integer", "minimum": 0 },
         "writeErrors": { "type": "integer", "minimum": 0 }
@@ -114,7 +120,8 @@
         "failure": { "$ref": "#/definitions/failure" },
         "attributes": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": { "type": "string" },
+          "description": "phase=configuration marks a configuration-method failure; it is shaped as a test.event so no new record type is needed. Always emitted when phase is present, even with include-attributes=false."
         }
       }
     },
