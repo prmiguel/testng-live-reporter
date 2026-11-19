@@ -26,7 +26,24 @@
               "value": { "type": "string" }
             }
           }
-        }
+        },
+        "annotations": { "$ref": "#/definitions/testAnnotations" }
+      }
+    },
+    "testAnnotations": {
+      "type": "object",
+      "description": "The @Test attributes TestNG exposes on ITestNGMethod. Omitted entirely when nothing is set, and never part of the hash: adding these does not change testId.",
+      "additionalProperties": false,
+      "properties": {
+        "groups": { "type": "array", "items": { "type": "string" } },
+        "dependsOnGroups": { "type": "array", "items": { "type": "string" } },
+        "enabled": { "type": "boolean", "description": "Present only when false; true is the default and omitted" },
+        "description": { "type": "string" },
+        "priority": { "type": "integer" },
+        "timeOut": { "type": "integer", "minimum": 0, "description": "Per-invocation timeout in millis; omitted when 0" },
+        "invocationCount": { "type": "integer", "minimum": 0, "description": "Omitted when 1" },
+        "retryAnalyzer": { "type": "string", "description": "Fully qualified class name; omitted when none" },
+        "dataProvider": { "type": "string" }
       }
     },
     "failure": {

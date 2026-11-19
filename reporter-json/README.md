@@ -51,6 +51,30 @@ Rules:
 - One record is always exactly one line; stack traces are escaped, never embedded raw.
 - Field naming is camelCase, matching `testng-execution-monitoring` and `ctrf-hub`.
 
+### `@Test` metadata
+
+`test.annotations` carries the annotation attributes TestNG exposes on `ITestNGMethod`:
+`groups`, `dependsOnGroups`, `enabled`, `description`, `priority`, `timeOut`,
+`invocationCount`, `retryAnalyzer`, `dataProvider`.
+
+```json
+"test":{"testId":"com.acme.LoginTest.login[]#a1b2...","hash":"a1b2...",
+        "className":"com.acme.LoginTest","methodName":"login","readableKey":"com.acme.LoginTest.login[]",
+        "parameters":[],
+        "annotations":{"groups":["slow"],"timeOut":500,"dataProvider":"rows"}}
+```
+
+- **Omitted entirely** when nothing is set, so a plain `@Test` adds no bytes.
+- Defaults are omitted rather than restated: `enabled` appears only when `false`,
+  `priority` only when non-zero, `invocationCount` only when not `1`, `timeOut` only when non-zero.
+- **Never part of the hash.** The hash is `SHA-256(className#methodName#params)`, so adding
+  these did not change any existing `testId` or `executionId`.
+- Only directly available getters are used. `dependsOnMethods`, `expectedExceptions`,
+  `singleThreaded`, `dataProviderClass` and `@Test.attributes` would need reflection on the
+  annotation, which would have to reimplement TestNG's class-level merge — they are not captured.
+- `@Test.attributes` (`CustomAttribute[]`) is skipped deliberately: it would collide with this
+  reporter's own `attributes` (`Map<String, String>`).
+
 ### Consolidated document (`.json`)
 
 Written at `close()`. `events[]` holds the live-stream records verbatim; `tests[]` holds one

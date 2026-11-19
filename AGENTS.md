@@ -95,6 +95,12 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
   `retryAttempt`. `tests | length == totals.tests` and
   `configurationFailures | length == totals.configurationFailures` are asserted in tests and in
   the CI validator, so any change to aggregation must keep them true.
+- `TestIdentity.annotations` holds `@Test` metadata. It is **excluded from the hash** on
+  purpose: `TestRunIdGenerator` hashes `className#methodName#params` as a string, so adding a
+  field cannot shift any `testId`/`executionId`. `TestRunIdGeneratorTest` guards this — do not
+  start hashing the record.
+- Only directly available `ITestNGMethod` getters are captured. Do not add reflection on
+  `@Test`: it would have to reimplement TestNG's class-level merge.
 
 ## Testing quirks
 

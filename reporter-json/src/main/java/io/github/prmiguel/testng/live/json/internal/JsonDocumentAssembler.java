@@ -189,6 +189,7 @@ public final class JsonDocumentAssembler {
             }
             writer.endArray();
         }
+        JsonEventRecordEncoder.writeAnnotations(writer, identity.annotations());
     }
 
     private void writeFailure(JsonTextWriter writer, FailureInfo failure) {

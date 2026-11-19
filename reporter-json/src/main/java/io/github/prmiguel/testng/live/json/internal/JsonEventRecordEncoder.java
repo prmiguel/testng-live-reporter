@@ -138,7 +138,55 @@ public final class JsonEventRecordEncoder implements EventRecordEncoder {
                     .name("value").value(parameter.value())
                     .endObject();
         }
-        writer.endArray().endObject();
+        writer.endArray();
+        writeAnnotations(writer, identity.annotations());
+        writer.endObject();
+    }
+
+    /**
+     * Writes the {@code @Test} metadata, omitting the whole object when nothing is set. Shared by
+     * the event encoder and the document assembler so both files describe a test identically.
+     *
+     * @param writer   target writer
+     * @param metadata captured annotations, may be null
+     */
+    static void writeAnnotations(JsonTextWriter writer, TestIdentity.Annotations metadata) {
+        if (metadata == null || metadata.isEmpty()) {
+            return;
+        }
+        writer.name("annotations").beginObject();
+        if (!metadata.groups().isEmpty()) {
+            writer.name("groups").beginArray();
+            metadata.groups().forEach(writer::value);
+            writer.endArray();
+        }
+        if (!metadata.dependsOnGroups().isEmpty()) {
+            writer.name("dependsOnGroups").beginArray();
+            metadata.dependsOnGroups().forEach(writer::value);
+            writer.endArray();
+        }
+        if (metadata.enabled() != null) {
+            writer.name("enabled").value(metadata.enabled());
+        }
+        if (metadata.description() != null) {
+            writer.name("description").value(metadata.description());
+        }
+        if (metadata.priority() != null) {
+            writer.name("priority").value(metadata.priority().longValue());
+        }
+        if (metadata.timeOut() != null) {
+            writer.name("timeOut").value(metadata.timeOut());
+        }
+        if (metadata.invocationCount() != null) {
+            writer.name("invocationCount").value(metadata.invocationCount().longValue());
+        }
+        if (metadata.retryAnalyzer() != null) {
+            writer.name("retryAnalyzer").value(metadata.retryAnalyzer());
+        }
+        if (metadata.dataProvider() != null) {
+            writer.name("dataProvider").value(metadata.dataProvider());
+        }
+        writer.endObject();
     }
 
     private void writeFailure(JsonTextWriter writer, FailureInfo failure) {

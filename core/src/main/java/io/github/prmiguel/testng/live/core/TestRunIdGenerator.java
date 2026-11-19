@@ -4,6 +4,8 @@ import io.github.prmiguel.testng.live.core.internal.DefaultParameterCanonicalize
 import io.github.prmiguel.testng.live.core.model.CanonicalParameter;
 import io.github.prmiguel.testng.live.core.model.TestIdentity;
 import io.github.prmiguel.testng.live.core.spi.ParameterCanonicalizer;
+import org.testng.IDataProviderMethod;
+import org.testng.IRetryAnalyzer;
 import org.testng.ITestNGMethod;
 import org.testng.ITestResult;
 
@@ -15,6 +17,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * Generates stable test identities and unique execution identifiers.
@@ -71,7 +76,8 @@ public final class TestRunIdGenerator {
         String hash = sha256Prefix(canonicalPayload, 16);
         String testId = readableKey + "#" + hash;
 
-        return new TestIdentity(className, methodName, parameters, readableKey, hash, testId);
+        return new TestIdentity(className, methodName, parameters, readableKey, hash, testId,
+                annotations(result.getMethod()));
     }
 
     /**
@@ -95,7 +101,102 @@ public final class TestRunIdGenerator {
         String hash = sha256Prefix(canonicalPayload, 16);
         String testId = readableKey + "#" + hash;
 
-        return new TestIdentity(className, methodName, Collections.emptyList(), readableKey, hash, testId);
+        return new TestIdentity(className, methodName, Collections.emptyList(), readableKey, hash, testId,
+                annotations(method));
+    }
+
+    /**
+     * Reads the {@code @Test} metadata TestNG exposes on {@code ITestNGMethod}.
+     * <p>
+     * Only directly available getters are used: reflection on the annotation itself would have to
+     * reimplement TestNG's class-level merge, and a metadata lookup must never fail a run, so
+     * every value is defensive.
+     *
+     * @param method method to describe, may be null for configuration methods
+     * @return captured metadata, never null
+     */
+    static TestIdentity.Annotations annotations(ITestNGMethod method) {
+        if (method == null) {
+            return TestIdentity.Annotations.EMPTY;
+        }
+        TestIdentity.Annotations captured = new TestIdentity.Annotations(
+                List.of(safeArray(method::getGroups)),
+                List.of(safeArray(method::getGroupsDependedUpon)),
+                method.getEnabled() ? null : Boolean.FALSE,
+                blankToNull(safe(() -> method.getDescription())),
+                zeroToNull(safeInt(method::getPriority)),
+                zeroToNull(safeLong(method::getTimeOut)),
+                safeInt(method::getInvocationCount) == 1 ? null : safeInt(method::getInvocationCount),
+                retryAnalyzerName(method),
+                dataProviderName(method));
+        return captured.isEmpty() ? TestIdentity.Annotations.EMPTY : captured;
+    }
+
+    private static String retryAnalyzerName(ITestNGMethod method) {
+        Class<? extends IRetryAnalyzer> analyzer = safe(method::getRetryAnalyzerClass);
+        if (analyzer == null) {
+            return null;
+        }
+        // Compared by name: the disabled marker lives in org.testng.internal, and core must not
+        // depend on TestNG internals.
+        if ("org.testng.internal.annotations.DisabledRetryAnalyzer".equals(analyzer.getName())) {
+            return null;
+        }
+        return analyzer.getName();
+    }
+
+    private static String dataProviderName(ITestNGMethod method) {
+        try {
+            IDataProviderMethod provider = method.getDataProviderMethod();
+            return provider == null ? null : blankToNull(provider.getName());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static String[] safeArray(Supplier<String[]> supplier) {
+        try {
+            String[] value = supplier.get();
+            return value == null ? new String[0] : value;
+        } catch (RuntimeException e) {
+            return new String[0];
+        }
+    }
+
+    private static int safeInt(IntSupplier supplier) {
+        try {
+            return supplier.getAsInt();
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
+    private static long safeLong(LongSupplier supplier) {
+        try {
+            return supplier.getAsLong();
+        } catch (RuntimeException e) {
+            return 0L;
+        }
+    }
+
+    private static <T> T safe(Supplier<T> supplier) {
+        try {
+            return supplier.get();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static Long zeroToNull(long value) {
+        return value == 0L ? null : value;
+    }
+
+    private static Integer zeroToNull(int value) {
+        return value == 0 ? null : value;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     /**

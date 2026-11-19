@@ -408,6 +408,18 @@ Two invariants always hold, so the arrays reconcile with the summary:
 A retried test appears once per attempt, distinguished by `retryAttempt`; `testId` alone is
 per-method. Passing tests omit `failure`, and parameterless methods omit `parameters`.
 
+`@Test` metadata rides along in `annotations` when the method sets any — `groups`,
+`dependsOnGroups`, `enabled`, `description`, `priority`, `timeOut`, `invocationCount`,
+`retryAnalyzer`, `dataProvider`. Defaults are omitted, so a plain `@Test` has no
+`annotations` key at all:
+
+```bash
+jq -r '.tests[] | select(.annotations.groups) | "\(.methodName): \(.annotations.groups | join(","))"' "$J"
+jq -r '.tests[] | select(.annotations.timeOut > 0) | "\(.methodName) timeout=\(.annotations.timeOut)"' "$J"
+jq -r '.tests[] | select(.annotations.enabled == false) | .methodName' "$J"
+jq -r '.tests[] | select(.annotations.retryAnalyzer) | "\(.methodName) -> \(.annotations.retryAnalyzer)"' "$J"
+```
+
 The document also embeds the raw stream as `events[]` by default. Set
 `testng.live.json.document-events=none` to drop it and keep only `run`, `tests`,
 `configurationFailures` and `summary` — on the fixture that is 36 KB down to 8 KB. The
