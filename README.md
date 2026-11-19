@@ -6,11 +6,11 @@ This project provides listeners that capture test execution progress in real tim
 
 ---
 
-## Proposal — Option A: one repository, multi-module Maven project
+## Proposal: one repository, multi-module Maven project
 
 Status: **proposal / design document** — the modules listed below describe the planned layout, not yet implemented code.
 
-The idea behind Option A: the shared listener machinery (state/status model, unique test identifiers, thread-safe event dispatch) lives in a small **core** module, and each reporting approach is its own module with its own JAR. Consumers depend only on the reporter they need, so no one pulls a big JAR with unused dependencies.
+The idea: the shared listener machinery (state/status model, unique test identifiers, thread-safe event dispatch) lives in a small **core** module, and each reporting approach is its own module with its own JAR. Consumers depend only on the reporter they need, so no one pulls a big JAR with unused dependencies.
 
 ### Project structure tree
 
