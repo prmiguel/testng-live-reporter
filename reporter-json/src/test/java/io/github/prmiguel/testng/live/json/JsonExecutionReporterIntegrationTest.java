@@ -102,5 +102,36 @@ class JsonExecutionReporterIntegrationTest {
         assertEquals(events.size(), ((List<?>) document.get("events")).size());
         assertEquals("integration-run", ((Map<?, ?>) document.get("run")).get("runId"));
         assertNotNull(document.get("summary"));
+
+        // The per-test view must reconcile with the summary, and with the stream.
+        List<?> tests = (List<?>) document.get("tests");
+        Map<?, ?> documentTotals = (Map<?, ?>) ((Map<?, ?>) document.get("summary")).get("totals");
+        assertEquals(((Number) documentTotals.get("tests")).intValue(), tests.size(),
+                "tests[] must hold exactly one entry per terminal attempt");
+        assertEquals(((Number) documentTotals.get("configurationFailures")).intValue(),
+                ((List<?>) document.get("configurationFailures")).size());
+        assertEquals(tests.size(),
+                events.stream().filter(e -> "FINISHED".equals(e.get("state"))
+                        && !"configuration".equals(phaseOf(e))).count(),
+                "tests[] must match the terminal stream records");
+        assertEquals(tests.size(),
+                tests.stream()
+                        .map(t -> ((Map<?, ?>) t).get("testId") + "#" + ((Map<?, ?>) t).get("retryAttempt"))
+                        .distinct()
+                        .count(),
+                "one entry per attempt: testId repeats across retries, retryAttempt distinguishes them");
+        tests.forEach(entry -> assertNotNull(((Map<?, ?>) entry).get("status")));
+
+        // A retried test appears once per attempt, with increasing retryAttempt.
+        List<Long> flakyRetries = tests.stream()
+                .filter(t -> "flakyTest".equals(((Map<?, ?>) t).get("methodName")))
+                .map(t -> ((Number) ((Map<?, ?>) t).get("retryAttempt")).longValue())
+                .toList();
+        assertEquals(List.of(0L, 1L), flakyRetries, "both attempts of a retried test are listed");
+    }
+
+    private static Object phaseOf(Map<String, Object> event) {
+        Map<?, ?> attributes = (Map<?, ?>) event.get("attributes");
+        return attributes == null ? null : attributes.get("phase");
     }
 }

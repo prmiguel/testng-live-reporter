@@ -33,6 +33,7 @@ class JsonReporterConfigurationTest {
         assertEquals(0, configuration.maxStackTraceChars());
         assertFalse(configuration.sortEvents());
         assertTrue(configuration.includeAttributes());
+        assertTrue(configuration.documentEvents(), "events are embedded by default");
     }
 
     @Test
@@ -71,6 +72,21 @@ class JsonReporterConfigurationTest {
         assertEquals(64, configuration.maxStackTraceChars());
         assertTrue(configuration.sortEvents());
         assertFalse(configuration.includeAttributes());
+    }
+
+    @Test
+    void readsDocumentEvents() {
+        assertEquals(false, JsonReporterConfiguration.from(Map.of(
+                JsonReporterConfiguration.DOCUMENT_EVENTS_PROPERTY, "none")).documentEvents());
+        assertEquals(true, JsonReporterConfiguration.from(Map.of(
+                JsonReporterConfiguration.DOCUMENT_EVENTS_PROPERTY, "all")).documentEvents());
+    }
+
+    @Test
+    void fallsBackToAllForAnUnknownDocumentEventsValue() {
+        assertEquals(true, JsonReporterConfiguration.from(Map.of(
+                JsonReporterConfiguration.DOCUMENT_EVENTS_PROPERTY, "whatever")).documentEvents(),
+                "a typo must not silently hide data");
     }
 
     @Test

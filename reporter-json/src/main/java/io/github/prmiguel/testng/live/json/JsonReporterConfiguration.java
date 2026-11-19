@@ -38,6 +38,7 @@ public record JsonReporterConfiguration(
         int maxStackTraceChars,
         boolean sortEvents,
         boolean includeAttributes,
+        boolean documentEvents,
         Duration shutdownTimeout
 ) {
 
@@ -58,6 +59,7 @@ public record JsonReporterConfiguration(
     public static final String MAX_STACK_TRACE_CHARS_PROPERTY = "testng.live.json.max-stack-trace-chars";
     public static final String SORT_EVENTS_PROPERTY = "testng.live.json.sort-events";
     public static final String INCLUDE_ATTRIBUTES_PROPERTY = "testng.live.json.include-attributes";
+    public static final String DOCUMENT_EVENTS_PROPERTY = "testng.live.json.document-events";
     public static final String SHUTDOWN_TIMEOUT_PROPERTY = "testng.live.json.shutdown-timeout-seconds";
 
     public static final String DEFAULT_OUTPUT_DIRECTORY = "target/testng-live-reporter";
@@ -124,6 +126,7 @@ public record JsonReporterConfiguration(
                 intValue(properties, MAX_STACK_TRACE_CHARS_PROPERTY, 0),
                 booleanValue(properties, SORT_EVENTS_PROPERTY, false),
                 booleanValue(properties, INCLUDE_ATTRIBUTES_PROPERTY, true),
+                documentEvents(properties.get(DOCUMENT_EVENTS_PROPERTY)),
                 Duration.ofSeconds(Math.max(1, intValue(properties, SHUTDOWN_TIMEOUT_PROPERTY, 30)))
         );
     }
@@ -148,6 +151,7 @@ public record JsonReporterConfiguration(
             case MAX_STACK_TRACE_CHARS_PROPERTY -> "TESTNG_LIVE_JSON_MAX_STACK_TRACE_CHARS";
             case SORT_EVENTS_PROPERTY -> "TESTNG_LIVE_JSON_SORT_EVENTS";
             case INCLUDE_ATTRIBUTES_PROPERTY -> "TESTNG_LIVE_JSON_INCLUDE_ATTRIBUTES";
+            case DOCUMENT_EVENTS_PROPERTY -> "TESTNG_LIVE_JSON_DOCUMENT_EVENTS";
             case SHUTDOWN_TIMEOUT_PROPERTY -> "TESTNG_LIVE_JSON_SHUTDOWN_TIMEOUT_SECONDS";
             default -> null;
         };
@@ -158,7 +162,7 @@ public record JsonReporterConfiguration(
                 OVERWRITE_PROPERTY, NDJSON_PROPERTY, DOCUMENT_PROPERTY, FLUSH_EACH_EVENT_PROPERTY,
                 INCLUDE_CLASSES_PROPERTY, EXCLUDE_CLASSES_PROPERTY, INCLUDE_METHODS_PROPERTY,
                 EXCLUDE_METHODS_PROPERTY, INCLUDE_STATUSES_PROPERTY, MAX_STACK_TRACE_CHARS_PROPERTY,
-                SORT_EVENTS_PROPERTY, INCLUDE_ATTRIBUTES_PROPERTY, SHUTDOWN_TIMEOUT_PROPERTY)) {
+                SORT_EVENTS_PROPERTY, INCLUDE_ATTRIBUTES_PROPERTY, DOCUMENT_EVENTS_PROPERTY, SHUTDOWN_TIMEOUT_PROPERTY)) {
             if (environmentVariableFor(property).equals(environmentVariable)) {
                 return property;
             }
@@ -205,6 +209,29 @@ public record JsonReporterConfiguration(
             return false;
         }
         return defaultValue;
+    }
+
+    /**
+     * Resolves whether the consolidated document embeds the raw stream as {@code events[]}.
+     * Accepted values are {@code all} (default) and {@code none}; anything else is warned
+     * about and treated as {@code all}, so a typo never silently hides data.
+     */
+    static boolean documentEvents(String value) {
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+        String normalized = value.trim();
+        if ("all".equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        if ("none".equalsIgnoreCase(normalized)) {
+            return false;
+        }
+        System.getLogger(JsonReporterConfiguration.class.getName()).log(
+                System.Logger.Level.WARNING,
+                "Ignoring {0}={1}; expected all or none, using all",
+                DOCUMENT_EVENTS_PROPERTY, normalized);
+        return true;
     }
 
     private static int intValue(Map<String, String> properties, String property, int defaultValue) {

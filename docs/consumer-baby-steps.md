@@ -386,10 +386,32 @@ appears and report the final totals from `run.summary`.
 
 ### The consolidated document instead
 
+The document is the convenient file: `tests[]` holds **one entry per attempt**, so you do not
+have to walk the lifecycle records to find outcomes.
+
 ```bash
-jq '.summary.totals' target/testng-live-reporter/*.json
-jq -r '.events[] | select(.status=="FAILED") | .test.readableKey' target/testng-live-reporter/*.json
+J=$(ls -t target/testng-live-reporter/*.json | head -1)
+
+jq '.summary.totals' "$J"
+jq -r '.tests[] | "\(.status)\t\(.readableKey)"' "$J" | sort
+jq -r '.tests[] | select(.status=="FAILED") | "\(.readableKey): \(.failure.message)"' "$J"
+jq -r '.tests[] | "\(.durationMs)\t\(.methodName)"' "$J" | sort -rn | head -5
+jq -r '.tests[] | select(.methodName=="dataProviderRow") | "\(.readableKey) \(.status)"' "$J"
+jq -r '.configurationFailures[] | "\(.methodName) \(.configurationKind): \(.failure.type)"' "$J"
 ```
+
+Two invariants always hold, so the arrays reconcile with the summary:
+
+- `tests | length == summary.totals.tests`
+- `configurationFailures | length == summary.totals.configurationFailures`
+
+A retried test appears once per attempt, distinguished by `retryAttempt`; `testId` alone is
+per-method. Passing tests omit `failure`, and parameterless methods omit `parameters`.
+
+The document also embeds the raw stream as `events[]` by default. Set
+`testng.live.json.document-events=none` to drop it and keep only `run`, `tests`,
+`configurationFailures` and `summary` — on the fixture that is 36 KB down to 8 KB. The
+`.ndjson` still holds the full timeline either way.
 
 ---
 
@@ -515,7 +537,7 @@ ls -t target/testng-live-reporter/ | head -2     # expect a .ndjson and a .json
 | File | Use |
 |---|---|
 | `*.ndjson` | live; one record per line; safe to read mid-run |
-| `*.json` | final; `{schemaVersion, run, events[], summary}` |
+| `*.json` | final; `{schemaVersion, run, events[], tests[], configurationFailures[], summary}` |
 
 Record kinds are `run.started`, `test.event`, `run.summary`.
 `state` ∈ DISCOVERED, STARTED, IN_PROGRESS, FINISHED (QUEUED is reserved, never emitted).

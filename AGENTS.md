@@ -87,6 +87,14 @@ node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
   method**, while `result.getMethod()` is the configuration method that threw. TestNG calls
   both overloads, so implement only the two-argument form or every failure is published twice.
 - Test identity hashes are the first 16 lowercase hex characters of SHA-256.
+- The consolidated document builds `tests[]`/`configurationFailures[]` from `AttemptIndex`
+  during `onEvent`, **not** by re-parsing the NDJSON: the module has no JSON parser, and one
+  would be written solely to re-read a file this process just wrote. Both views are fed by the
+  same accepted-event path on the reporter's single dispatcher thread.
+- `tests[]` has one entry per **attempt**: a retried method repeats its `testId` with a higher
+  `retryAttempt`. `tests | length == totals.tests` and
+  `configurationFailures | length == totals.configurationFailures` are asserted in tests and in
+  the CI validator, so any change to aggregation must keep them true.
 
 ## Testing quirks
 

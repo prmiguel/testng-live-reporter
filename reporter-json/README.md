@@ -53,14 +53,41 @@ Rules:
 
 ### Consolidated document (`.json`)
 
-Written at `close()`. The event objects are the live-stream records spliced verbatim.
+Written at `close()`. `events[]` holds the live-stream records verbatim; `tests[]` holds one
+entry per attempt, so outcomes are readable without walking the lifecycle.
 
 ```json
 {"schemaVersion":2,
  "run":{"schemaVersion":2,"runId":"demo-run","startedAt":"2026-11-19T15:03:01.308Z","reporter":{"name":"testng-live-reporter-json","version":"1.0.0-SNAPSHOT"}},
  "events":[{"type":"test.event", "...":"..."}],
+ "tests":[{"testId":"com.acme.Sample.runs[]#...","readableKey":"com.acme.Sample.runs[]",
+           "className":"com.acme.Sample","methodName":"runs","status":"PASSED",
+           "durationMs":12,"startedAt":"...","finishedAt":"...","suiteName":"smoke",
+           "testName":"Sample","threadName":"TestNG-test-1","invocationIndex":0,
+           "retryAttempt":0}],
+ "configurationFailures":[{"testId":"...","methodName":"brokenSetup","configurationKind":"beforeMethod",
+                          "status":"ERROR","timestamp":"...","failure":{...}}],
  "summary":{"type":"run.summary","schemaVersion":2,"finishedAt":"2026-11-19T15:03:01.414Z","durationMs":106,"totals":{"...":"..."}}}
 ```
+
+Two invariants always hold:
+
+- `tests | length == summary.totals.tests`
+- `configurationFailures | length == summary.totals.configurationFailures`
+
+A retried test appears **once per attempt**, distinguished by `retryAttempt` — `testId` is
+per-method, not per-attempt. `failure` is omitted for passing attempts; `parameters` is
+omitted for parameterless methods; `durationMs`/`startedAt` are omitted when an attempt never
+reached a terminal record.
+
+`tests[]` and `configurationFailures[]` are accumulated in memory while the stream is written
+rather than re-parsed from the `.ndjson`: this module has no JSON parser, and both arrays are
+fed by the same accepted-event path on the reporter's single dispatcher thread, so they cannot
+disagree with `events[]`.
+
+Set `testng.live.json.document-events=none` to omit `events[]` and keep only `run`, `tests`,
+`configurationFailures` and `summary` — 36 KB becomes 8 KB on the test fixture. The default is
+`all`, matching earlier behaviour.
 
 Because it is assembled by re-reading the `.ndjson`, a run whose JVM died still yields a
 valid document (without `summary`) as long as something called `flush()`. The document is
@@ -101,6 +128,7 @@ a test run.
 | `testng.live.json.include-statuses` | `TESTNG_LIVE_JSON_INCLUDE_STATUSES` | *(all)* | e.g. `FAILED,TIMEOUT`; non-terminal events are always kept |
 | `testng.live.json.max-stack-trace-chars` | `TESTNG_LIVE_JSON_MAX_STACK_TRACE_CHARS` | `0` (unlimited) | Truncate and add `"truncated":true` |
 | `testng.live.json.sort-events` | `TESTNG_LIVE_JSON_SORT_EVENTS` | `false` | Sort document events by `sequence` |
+| `testng.live.json.document-events` | `TESTNG_LIVE_JSON_DOCUMENT_EVENTS` | `all` | `all` embeds the raw stream as `events[]`; `none` keeps only `tests[]` and `summary` |
 | `testng.live.json.include-attributes` | `TESTNG_LIVE_JSON_INCLUDE_ATTRIBUTES` | `true` | Emit `attributes` |
 | `testng.live.json.shutdown-timeout-seconds` | `TESTNG_LIVE_JSON_SHUTDOWN_TIMEOUT_SECONDS` | `30` | Informational; the bus owns the real timeout |
 

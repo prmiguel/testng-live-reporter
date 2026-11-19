@@ -82,6 +82,21 @@ public final class JsonTextWriter {
         return this;
     }
 
+    /**
+     * Appends an already-serialized JSON value verbatim.
+     * <p>
+     * Used only for records this reporter wrote itself moments earlier (the stream's own
+     * lines), which is what keeps {@code events[]} byte-identical to the {@code .ndjson}.
+     *
+     * @param json valid JSON text for a single value
+     */
+    public JsonTextWriter rawValue(String json) {
+        Objects.requireNonNull(json, "json must not be null");
+        separator();
+        out.append(json);
+        return this;
+    }
+
     public JsonTextWriter nullValue() {
         separator();
         out.append("null");

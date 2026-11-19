@@ -87,6 +87,56 @@
         }
       }
     },
+    "testSummary": {
+      "type": "object",
+      "description": "One entry per attempt: the outcome without the intermediate lifecycle records.",
+      "required": ["testId", "readableKey", "className", "methodName", "status", "finishedAt",
+                   "suiteName", "testName", "threadName", "invocationIndex", "retryAttempt"],
+      "additionalProperties": false,
+      "properties": {
+        "testId": { "type": "string" },
+        "readableKey": { "type": "string" },
+        "className": { "type": "string" },
+        "methodName": { "type": "string" },
+        "parameters": {
+          "type": "array",
+          "description": "Omitted when the method takes no parameters",
+          "items": { "$ref": "#/definitions/testIdentity/properties/parameters/items" }
+        },
+        "status": {
+          "enum": ["PASSED", "FAILED", "SKIPPED", "IGNORED", "TIMEOUT", "INTERRUPTED", "ERROR"]
+        },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "finishedAt": { "type": "string", "format": "date-time" },
+        "suiteName": { "type": "string" },
+        "testName": { "type": "string" },
+        "threadName": { "type": "string" },
+        "invocationIndex": { "type": "integer", "minimum": 0 },
+        "retryAttempt": { "type": "integer", "minimum": 0 },
+        "failure": { "$ref": "#/definitions/failure" }
+      }
+    },
+    "configurationFailureSummary": {
+      "type": "object",
+      "description": "A @Before*/@After* method that threw. Kept out of tests so totals stay comparable.",
+      "required": ["testId", "readableKey", "className", "methodName", "configurationKind",
+                   "status", "timestamp", "suiteName", "testName"],
+      "additionalProperties": false,
+      "properties": {
+        "testId": { "type": "string" },
+        "readableKey": { "type": "string" },
+        "className": { "type": "string" },
+        "methodName": { "type": "string" },
+        "configurationKind": { "type": "string" },
+        "status": { "const": "ERROR" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "suiteName": { "type": "string" },
+        "testName": { "type": "string" },
+        "failure": { "$ref": "#/definitions/failure" }
+      }
+    },
     "testEvent": {
       "type": "object",
       "required": ["type", "recordSchemaVersion", "eventSchemaVersion", "sequence", "runId",
@@ -144,14 +194,25 @@
     {
       "title": "Consolidated report document",
       "type": "object",
-      "required": ["schemaVersion", "run", "events"],
+      "required": ["schemaVersion", "run", "tests", "configurationFailures"],
       "additionalProperties": false,
       "properties": {
         "schemaVersion": { "const": 2 },
         "run": { "type": "object" },
         "events": {
           "type": "array",
+          "description": "The raw stream, byte-identical to the .ndjson. Omitted when document-events=none.",
           "items": { "$ref": "#/definitions/testEvent" }
+        },
+        "tests": {
+          "type": "array",
+          "description": "One entry per attempt that reached a terminal state. Length always equals summary.totals.tests.",
+          "items": { "$ref": "#/definitions/testSummary" }
+        },
+        "configurationFailures": {
+          "type": "array",
+          "description": "Records with phase=configuration. Length always equals summary.totals.configurationFailures, and they are never part of tests.",
+          "items": { "$ref": "#/definitions/configurationFailureSummary" }
         },
         "summary": { "type": "object" }
       }

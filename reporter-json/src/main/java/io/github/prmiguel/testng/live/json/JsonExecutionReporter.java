@@ -4,6 +4,7 @@ import io.github.prmiguel.testng.live.core.internal.ExecutionEventFactory;
 import io.github.prmiguel.testng.live.core.model.ExecutionEvent;
 import io.github.prmiguel.testng.live.core.model.RunInfo;
 import io.github.prmiguel.testng.live.core.spi.ExecutionReporter;
+import io.github.prmiguel.testng.live.json.internal.AttemptIndex;
 import io.github.prmiguel.testng.live.json.internal.EventFilter;
 import io.github.prmiguel.testng.live.json.internal.JsonDocumentAssembler;
 import io.github.prmiguel.testng.live.json.internal.ReportFiles;
@@ -53,6 +54,7 @@ public final class JsonExecutionReporter implements ExecutionReporter {
     private final Clock clock;
 
     private final RunTotals totals = new RunTotals();
+    private final AttemptIndex attemptIndex = new AttemptIndex();
     private final Set<String> acceptedAttemptStates = new HashSet<>();
     private final List<String> bufferedRecords = new ArrayList<>();
 
@@ -123,6 +125,7 @@ public final class JsonExecutionReporter implements ExecutionReporter {
             return;
         }
         totals.accept(event);
+        attemptIndex.accept(event);
         write(encoder.event(event));
     }
 
@@ -163,6 +166,7 @@ public final class JsonExecutionReporter implements ExecutionReporter {
         }
         bufferedRecords.clear();
         acceptedAttemptStates.clear();
+        attemptIndex.clear();
     }
 
     private void ensureOpen(ExecutionEvent event) {
@@ -208,11 +212,15 @@ public final class JsonExecutionReporter implements ExecutionReporter {
     }
 
     private void assembleDocument() {
+        JsonDocumentAssembler assembler = new JsonDocumentAssembler(
+                attemptIndex, configuration.maxStackTraceChars());
         try {
             if (writer != null || configuration.writeNdjson()) {
-                JsonDocumentAssembler.assemble(ndjsonPath, documentPath, configuration.sortEvents());
+                assembler.assemble(ndjsonPath, documentPath,
+                        configuration.sortEvents(), configuration.documentEvents());
             } else {
-                JsonDocumentAssembler.assemble(bufferedRecords, documentPath, configuration.sortEvents());
+                assembler.assemble(bufferedRecords, documentPath,
+                        configuration.sortEvents(), configuration.documentEvents());
             }
         } catch (IOException | RuntimeException e) {
             totals.writeFailed();

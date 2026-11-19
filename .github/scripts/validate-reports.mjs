@@ -141,21 +141,51 @@ function validateStream(path, documentName) {
   if (document.schemaVersion !== 1 && document.schemaVersion !== 2) {
     fail(`${documentPath}: schemaVersion is ${document.schemaVersion}`);
   }
-  if (!Array.isArray(document.events)) {
-    fail(`${documentPath}: events is not an array`);
-    return;
-  }
-  if (document.events.length !== events.length) {
-    fail(`${documentPath}: holds ${document.events.length} events but the stream has ${events.length}`);
-  }
-  for (const [index, event] of document.events.entries()) {
-    const streamed = events[index];
-    if (streamed && event.sequence !== streamed.sequence) {
-      fail(`${documentPath}: event ${index} sequence ${event.sequence} != streamed ${streamed.sequence}`);
+  // events[] is optional: document-events=none omits it deliberately.
+  if (document.events !== undefined) {
+    if (!Array.isArray(document.events)) {
+      fail(`${documentPath}: events is not an array`);
+      return;
+    }
+    if (document.events.length !== events.length) {
+      fail(`${documentPath}: holds ${document.events.length} events but the stream has ${events.length}`);
+    }
+    for (const [index, event] of document.events.entries()) {
+      const streamed = events[index];
+      if (streamed && event.sequence !== streamed.sequence) {
+        fail(`${documentPath}: event ${index} sequence ${event.sequence} != streamed ${streamed.sequence}`);
+      }
     }
   }
   if (!document.run || !document.run.runId) fail(`${documentPath}: missing run.runId`);
   if (!document.summary || !document.summary.totals) fail(`${documentPath}: missing summary.totals`);
+
+  // The per-test view must reconcile with both the summary and the stream.
+  // A document written by an older build predates tests[]; validate what is there.
+  if (document.tests === undefined) {
+    return;
+  }
+  if (!Array.isArray(document.tests)) {
+    fail(`${documentPath}: tests is not an array`);
+    return;
+  }
+  if (!Array.isArray(document.configurationFailures)) {
+    fail(`${documentPath}: configurationFailures is not an array`);
+    return;
+  }
+  const totals = document.summary.totals;
+  if (document.tests.length !== totals.tests) {
+    fail(`${documentPath}: tests has ${document.tests.length} entries but totals.tests is ${totals.tests}`);
+  }
+  if (document.configurationFailures.length !== (totals.configurationFailures || 0)) {
+    fail(`${documentPath}: configurationFailures has ${document.configurationFailures.length} entries `
+      + `but totals.configurationFailures is ${totals.configurationFailures}`);
+  }
+  const terminal = events.filter((event) => event.state === "FINISHED"
+    && (event.attributes === undefined || event.attributes.phase !== "configuration"));
+  if (document.tests.length !== terminal.length) {
+    fail(`${documentPath}: tests has ${document.tests.length} entries but the stream has ${terminal.length} terminal attempts`);
+  }
 }
 
 function validateDocument(path, name) {
@@ -163,7 +193,6 @@ function validateDocument(path, name) {
   if (!document) return;
   if (!document.run) fail(`${path}: missing run section`);
   if (!document.summary) fail(`${path}: missing summary section`);
-  if (!Array.isArray(document.events)) fail(`${path}: missing events array`);
 }
 
 function validateSchemaArtifact() {
