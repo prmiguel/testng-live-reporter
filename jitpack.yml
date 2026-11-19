@@ -1,0 +1,10 @@
+# JitPack build configuration.
+# The default "latest" JitPack image runs JDK 17, but this project compiles with
+# maven.compiler.release=21, so the JDK must be switched explicitly.
+jdk:
+  - openjdk21
+before_install:
+  - sdk install java 21-open
+  - sdk use java 21-open
+install:
+  - ./mvnw -B -ntp install -DskipTests
