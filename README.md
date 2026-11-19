@@ -365,15 +365,26 @@ GitHub Packages requires authentication in `~/.m2/settings.xml`.
 
 ### JitPack
 
-Public releases are also available through JitPack without authentication:
+Built on demand from a tag, branch, or commit hash — no authentication needed.
+`jitpack.yml` selects JDK 21 (the default image ships JDK 17, which cannot compile
+`release 21`) and runs the build through the committed Maven wrapper.
+
+For a multi-module project the group is `com.github.<user>.<repo>` and the artifact is
+the module artifactId:
 
 ```xml
 <dependency>
-    <groupId>com.github.prmiguel</groupId>
+    <groupId>com.github.prmiguel.testng-live-reporter</groupId>
     <artifactId>testng-live-reporter-json</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.0</version> <!-- a tag, branch-SNAPSHOT, or commit hash -->
 </dependency>
 ```
+
+Depend on `com.github.prmiguel:testng-live-reporter` instead to pull in every module.
+JitPack rewrites the internal module dependency to the same requested version, so a single
+version resolves the whole graph. Note that a build only works for commits that already
+contain `jitpack.yml`, and `1.0.0-SNAPSHOT` in the POM is replaced by the requested version
+at publish time.
 
 ---
 
