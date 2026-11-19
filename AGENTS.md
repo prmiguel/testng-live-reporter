@@ -23,6 +23,25 @@ mvn -pl core test -Dtest=LiveReportingListenerIntegrationTest
 
 - TestNG writes `core/test-output/`; it is gitignored and should not be committed.
 
+## CI
+
+- `ci.yml` runs on every push to `main` and every pull request: `mvn -B -ntp clean verify`,
+  then a dogfood run, then `node .github/scripts/validate-reports.mjs`.
+- `compatibility.yml` is schedule + manual only and matrices TestNG 7.10.2 and 7.11.0 via
+  `-Dtestng.version=<v>`.
+- `codeql.yml` analyses `java-kotlin`; `dependency-review.yml` runs on pull requests only.
+- Reproduce the dogfood step locally:
+
+```bash
+mvn -B -ntp -pl reporter-json -am test -Dtest=JsonOutputDogfoodTest \
+  -Dsurefire.failIfNoSpecifiedTests=false \
+  -Ddogfood.output-dir="$PWD/reporter-json/target/dogfood"
+node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
+```
+
+- `JsonOutputDogfoodTest` only runs when `-Ddogfood.output-dir` is set, so a plain
+  `mvn verify` stays hermetic.
+
 ## Module layout
 
 - Maven multi-module project; `core` and `reporter-json` exist today.

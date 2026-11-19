@@ -306,12 +306,10 @@ testng-live-reporter/
 │       └── resources/testng.xml
 │
 ├── .github/workflows/
-│   ├── ci.yml
-│   ├── compatibility.yml
-│   ├── snapshots.yml
-│   ├── release.yml
-│   ├── codeql.yml
-│   └── dependency-review.yml
+│   ├── ci.yml                                   # Build, tests, dogfood + report validation
+│   ├── compatibility.yml                        # TestNG version matrix (schedule + manual)
+│   ├── codeql.yml                               # CodeQL java-kotlin analysis
+│   └── dependency-review.yml                    # Pull-request dependency review
 │
 └── README.md
 ```
@@ -459,19 +457,22 @@ testNG.run();
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `ci.yml` | PR + push to `main` | Build, unit tests, integration tests, dogfood JSON reporter, JDK 21 |
-| `compatibility.yml` | Schedule + manual | Test against supported TestNG versions |
-| `snapshots.yml` | Push to `main` | Deploy `x.y.z-SNAPSHOT` to GitHub Packages |
-| `release.yml` | Tag `v*` | Deploy release artifacts to GitHub Packages |
-| `codeql.yml` | PR + schedule | Security analysis |
-| `dependency-review.yml` | PR | Dependency vulnerability and license review |
+| `ci.yml` | PR + push to `main` | Build, full test suite, dogfood reporter-json, validate emitted reports, JDK 21 |
+| `compatibility.yml` | Schedule + manual | Test against supported TestNG versions (7.10.2, 7.11.0) |
+| `codeql.yml` | PR + push to `main` + schedule | CodeQL analysis for `java-kotlin` |
+| `dependency-review.yml` | PR only | Dependency vulnerability and license review |
+| `snapshots.yml` / `release.yml` | — | Not implemented yet: the POM has no `distributionManagement`, so nothing is published |
 
-Workflows will follow secure defaults: least-privilege `permissions`, pinned action
-SHAs, explicit timeouts, Maven dependency caching, and artifact retention limits.
+Workflows follow secure defaults: least-privilege `permissions`, actions pinned to major
+version tags, explicit `timeout-minutes`, Maven dependency caching, and artifact retention
+limits. `ci.yml` additionally validates the real JSON output — a dogfood run writes both
+files, then `.github/scripts/validate-reports.mjs` asserts every NDJSON line parses, the
+record counts match the summary totals, no `(executionId, state)` pair repeats, and the
+consolidated document splices exactly the streamed events.
 
 ```mermaid
 flowchart LR
-    A[git tag v1.0.0] --> B[release.yml]
+    A[git tag v1.0.0] --> B[release.yml — planned]
     B --> C[Build + tests]
     C --> D[Publish to GitHub Packages]
     D --> E[JitPack builds tag]

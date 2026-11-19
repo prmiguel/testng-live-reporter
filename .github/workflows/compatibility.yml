@@ -1,0 +1,30 @@
+name: compatibility
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testng:
+    name: TestNG ${{ matrix.testng }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        testng: ["7.10.2", "7.11.0"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build and test against TestNG ${{ matrix.testng }}
+        run: mvn -B -ntp clean verify -Dtestng.version=${{ matrix.testng }}

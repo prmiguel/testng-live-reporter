@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (JDK 21)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build and test
+        run: mvn -B -ntp clean verify
+
+      - name: Dogfood the JSON reporter
+        run: >
+          mvn -B -ntp -pl reporter-json -am test
+          -Dtest=JsonOutputDogfoodTest
+          -Dsurefire.failIfNoSpecifiedTests=false
+          -Ddogfood.output-dir="$PWD/reporter-json/target/dogfood"
+
+      - name: Validate emitted reports
+        run: node .github/scripts/validate-reports.mjs reporter-json/target/dogfood
+
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            **/target/surefire-reports/**
+            reporter-json/target/dogfood/**
