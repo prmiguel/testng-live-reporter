@@ -1,537 +1,174 @@
-# 📡 testng-live-reporter
+# 📡 TestNG Live Reporter
 
-Live reporting listeners for **TestNG** execution traceability and observability.
+> **Live execution traceability and real-time observability for TestNG.**
 
-> 🚦 **Status — design document / proposal**
->
-> This README describes the planned shape of the project. No modules, listeners, or
-> workflows are implemented yet. The first implementation milestone will deliver
-> `core` + `reporter-json`; the remaining reporters are planned follow-ups.
+[![CI](https://github.com/prmiguel/testng-live-reporter/actions/workflows/ci.yml/badge.svg)](https://github.com/prmiguel/testng-live-reporter/actions/workflows/ci.yml)
+[![JitPack](https://jitpack.io/v/prmiguel/testng-live-reporter.svg)](https://jitpack.io/#prmiguel/testng-live-reporter)
+[![Java 21](https://img.shields.io/badge/JDK-21%2B-blue.svg)](https://openjdk.org/projects/jdk/21/)
+[![TestNG](https://img.shields.io/badge/TestNG-7.10%20%7C%207.11-brightgreen.svg)](https://testng.org)
+[![License](https://img.shields.io/badge/License-Apache_2.0-orange.svg)](LICENSE)
 
----
+When a TestNG suite runs—especially with parallel execution, retries, and data providers—most teams are left waiting until all tests finish before getting actionable insights.
 
-## 🎯 Problem we are solving
-
-When a TestNG suite runs—especially with parallel execution and data providers—the
-only signals most teams get are console logs and a final report. It is hard to answer
-simple questions while tests are still running:
-
-- Which tests are currently executing?
-- How many are queued, completed, passed, failed, skipped, or ignored?
-- Which data-provider invocation or parallel instance produced a given event?
-- Can another local tool consume the execution stream safely in real time?
-
-This project provides **live execution listeners** that expose a consistent,
-thread-safe stream of events describing test flow and outcome, so both humans and
-other tools can understand what is happening *right now*.
-
-### 🤖 Future AI-agent use case
-
-Because the events are deterministic, machine-readable, and written locally in real
-time, a coding assistant could later ask questions like:
-
-> "How is the test execution going?"
-
-And receive an answer such as:
-
-> "20 tests total: 12 completed, 5 pending, 3 in progress; 9 passed, 2 failed,
-> 1 ignored."
-
-That conversational interface is **out of scope for now**. What *is* in scope is
-producing a reliable local event stream that could enable those integrations later.
+**TestNG Live Reporter** attaches to TestNG's lifecycle to emit a deterministic, thread-safe, and non-blocking stream of test events in real time. Inspect what is running right now, tail progress live, or feed test data into local dashboards and AI agents.
 
 ---
 
-## 🏆 Goals
+## ✨ Features
 
-### Primary goal
-
-Provide TestNG listeners that emit accurate, real-time, thread-safe execution events
-containing lifecycle state, outcome status, timing, and stable test identity.
-
-### Secondary goals
-
-- **Small artifacts** — each reporter ships in its own JAR with only its own backend
-dependencies.
-- **Pluggable backends** — start with JSON; later add SQLite, a local cached DB, and CTRF.
-- **Parallel & data-provider support** — every event is attributable to the correct
-method, parameter set, invocation, and thread.
-- **Stable schemas** — event contracts and identifiers are versioned so consumers can
-rely on them.
-- **External registration** — listeners can be used from Maven dependencies, SPI,
-external JARs, or the TestNG API.
-
-### Non-goals (out of scope for now)
-
-- Conversational AI interface or agent integration.
-- Web dashboard, hosted service, or remote querying.
-- Production observability backends such as OpenTelemetry, Jaeger, or Prometheus.
+- ⚡ **Real-Time Streaming** — Appends newline-delimited JSON (`.ndjson`) immediately as events happen; watch tests live with `tail -f`.
+- 📊 **Consolidated Summary** — Generates a structured `.json` document with totals and detailed attempt records when execution ends.
+- 🧵 **Thread-Safe & Non-Blocking** — Event bus dispatches asynchronously to dedicated reporter threads; worker test threads are never blocked.
+- 🆔 **Deterministic Identity** — Canonical test identities with stable 16-hex SHA-256 hashes and unique execution IDs for data providers, retries, and parallel invocations.
+- 🔌 **Zero-Code SPI Discovery** — Integrates seamlessly via Java `ServiceLoader`. Drop the JARs on the classpath and reporting begins automatically.
+- 🤖 **AI-Agent Ready** — Machine-readable, deterministic output designed for instant status queries by coding assistants and CI bots.
 
 ---
 
-## 🏗️ Architecture
-
-The architecture is a thin, non-blocking layer between TestNG and pluggable reporters.
-
-```mermaid
-flowchart LR
-    subgraph TestNG
-        S[Suite XML / @Test classes]
-        WT[TestNG worker threads]
-    end
-
-    L[LiveReportingListener<br/>core]
-    ID[TestRunIdGenerator<br/>canonical identity + hash]
-    EB[ExecutionEventBus<br/>thread-safe dispatch]
-    SPI[ExecutionReporter SPI]
-
-    JSON[reporter-json]
-    SQL[reporter-sqlite]
-    CDB[reporter-cache-db]
-    CTRF[reporter-ctrf]
-
-    S --> L
-    WT --> L
-    L --> ID
-    L --> EB
-    EB --> SPI
-    SPI --> JSON
-    SPI -.planned.-> SQL
-    SPI -.planned.-> CDB
-    SPI -.planned.-> CTRF
-```
-
-### 🚀 Initial scope — core + reporter-json
-
-The first milestone validates the API with a single reference reporter:
-
-- `core` owns the listener hooks, state/status model, identity generation, event bus,
-  and `ExecutionReporter` SPI.
-- `reporter-json` implements the SPI and writes a live JSON execution stream.
-
-Only after `core` + `reporter-json` are stable will SQLite, cached DB, and CTRF
-reporters be added.
-
-### Parallel-event flow
-
-```mermaid
-sequenceDiagram
-    participant T1 as TestNG Thread 1
-    participant T2 as TestNG Thread 2
-    participant L as LiveReportingListener
-    participant EB as ExecutionEventBus
-    participant R as JsonExecutionReporter
-
-    T1->>L: beforeInvocation(testA)
-    T2->>L: beforeInvocation(testB)
-    L->>EB: publish(eventA)
-    L->>EB: publish(eventB)
-    EB->>R: onEvent(eventA)
-    EB->>R: onEvent(eventB)
-    R-->>R: append to JSON file
-```
-
-Reporters never block TestNG worker threads. Each reporter may keep its own queue or
-buffer; slow reporters must not slow down tests.
-
----
-
-## ⚙️ Execution event model
-
-Every event has a **state** (where the test is in its lifecycle) and a **status**
-(its outcome). They are independent until the test finishes.
-
-### State model (lifecycle)
-
-| State | Meaning | Terminal? |
-|---|---|---|
-| `DISCOVERED` | The test method is present in the parsed suite/model. Emitted once per method from `onStart(ITestContext)`. | No |
-| `QUEUED` | **Reserved — never emitted.** TestNG exposes no callback between discovery and `onTestStart`, so publishing it would mean inventing a transition. | No |
-| `STARTED` | TestNG called `beforeInvocation` for this attempt. Emitted once per attempt. | No |
-| `IN_PROGRESS` | The method body is actively executing. | No |
-| `FINISHED` | No further execution events will occur for this attempt. | Yes |
-
-`DISCOVERED` is synthetic in the sense that it is derived from the parsed model rather than
-from an execution callback, but it reflects a real, checkable fact. `IN_PROGRESS` is captured
-between `beforeInvocation` and `afterInvocation` hooks when available.
-
-### Status model (outcome)
-
-| Status | Meaning | Terminal? |
-|---|---|---|
-| `UNDETERMINED` | The test has not finished yet. | No |
-| `PASSED` | `onTestSuccess` was invoked. | Yes |
-| `FAILED` | `onTestFailure` was invoked, typically an assertion or unexpected exception. | Yes |
-| `SKIPPED` | `onTestSkipped` was invoked (e.g., missing dependency or failed configuration). | Yes |
-| `IGNORED` | The method was not executed because it is disabled or excluded by groups. | Yes |
-| `TIMEOUT` | The test was terminated because it exceeded its timeout. | Yes |
-| `INTERRUPTED` | The thread was interrupted before normal completion. | Yes |
-| `ERROR` | The framework or listener could not determine a normal test outcome. | Yes |
-
-`FAILED` vs `ERROR` is a best-effort classification: assertion failures are `FAILED`,
-while infrastructure or unexpected framework problems are `ERROR`.
-
-A configuration method (`@BeforeMethod`, `@BeforeClass`, `@After*`) that throws is reported
-as a `test.event` with `FINISHED`/`ERROR` and `attributes.phase = "configuration"` — there is
-no separate record type. The tests it prevented from running are reported as `SKIPPED`
-separately, so the two records together explain each other. Configuration failures are
-counted in `totals.configurationFailures` and excluded from `totals.tests`.
-
-### State transition diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> DISCOVERED
-    DISCOVERED --> STARTED
-    DISCOVERED --> FINISHED : excluded by group (IGNORED)
-    STARTED --> IN_PROGRESS
-    IN_PROGRESS --> FINISHED
-    STARTED --> FINISHED : immediate failure/skip
-    FINISHED --> [*]
-```
-
-`QUEUED` is intentionally absent: it is reserved and never emitted.
-
----
-
-## 🆔 Test and execution identifiers
-
-Two identifiers are produced for every attempt:
-
-- **`testId`** — stable identity of the test method and its canonical parameters.
-- **`executionId`** — unique identifier for a single execution attempt within a run.
-
-### Canonical identity
-
-The human-readable identity is:
-
-```text
-package.TestClass.testMethod[canonicalParameters]
-```
-
-The canonical parameter form is deterministic across JVMs:
-
-- `null` is serialized as `"null"`.
-- Primitives and strings use their natural string form.
-- Arrays are serialized recursively.
-- Objects are serialized with a stable JSON/canonical representation; classes that
-  rely on default `Object.toString()` (memory hash) are normalized using type + a
-  deterministic field snapshot.
-
-### Deterministic hash
-
-A deterministic hash is appended to make long identities compact and indexable:
-
-```text
-package.TestClass.testMethod[canonicalParameters]#a1b2c3d4e5f6789a
-```
-
-The hash is the first **16 hexadecimal characters of SHA-256** over the canonical
-identity payload. The full readable key is always retained for diagnostics.
-
-### Execution identity
-
-`executionId` combines the `testId` hash with run context to distinguish duplicate
-values from data providers, factory instances, retries, and parallel threads:
-
-```text
-{runId}-{testIdHash}-{invocationIndex}-{retryAttempt}-{threadId}
-```
-
-This makes it possible to correlate every event with a unique execution attempt
-without losing the stable identity of the underlying test.
-
----
-
-## ⚡ Parallel execution, data providers, and retries
-
-- **Parallel tests:** every event records the originating thread. The event bus uses
-  non-blocking structures (`ConcurrentHashMap`, `BlockingQueue`) and never holds a
-  lock while calling a reporter.
-- **Data providers:** each invocation gets its own `executionId` and parameter set,
-  so identical parameter values are still distinguishable by invocation index.
-- **Retries:** each retry attempt is a new `executionId` sharing the same `testId`.
-  The final TestNG result is recorded as a separate aggregate event.
-- **Factories:** factory instance identity is included in execution context so
-  multiple instances of the same class do not collide.
-
----
-
-## 📁 Repository structure
-
-### Module overview
-
-| Module | ArtifactId | Purpose | Status |
-|---|---|---|---|
-| `core` | `testng-live-reporter-core` | Listener base, state/status model, identity generation, event bus, SPI | Implemented |
-| `reporter-json` | `testng-live-reporter-json` | Live JSON execution stream + consolidated document | Implemented |
-| `reporter-sqlite` | `testng-live-reporter-sqlite` | SQLite persistence | Planned |
-| `reporter-cache-db` | `testng-live-reporter-cache-db` | Local cached DB (e.g. H2/MapDB) | Planned |
-| `reporter-ctrf` | `testng-live-reporter-ctrf` | Common Test Report Format output | Planned |
-| `integration-tests` | `testng-live-reporter-integration-tests` | E2E validation, dogfooding | Test-only, not published |
-
-### Planned structure tree
+## 📁 Repository Structure
 
 ```
 testng-live-reporter/
-├── pom.xml                                      # Parent POM: ${revision} versioning, dependency/plugin management
+├── pom.xml                                      # Parent POM: ${revision} SemVer & plugin management
 │
 ├── core/                                        # artifactId: testng-live-reporter-core
-│   └── src/
-│       ├── main/java/io/github/prmiguel/testng/live/core/
-│       │   ├── LiveReportingListener.java       # TestNG listener entry point
-│       │   ├── ExecutionEventBus.java           # Thread-safe fan-out to reporters
-│       │   ├── TestRunIdGenerator.java          # Canonical identity + SHA-256 hash
-│       │   ├── model/
-│       │   │   ├── ExecutionState.java          # Lifecycle enum
-│       │   │   ├── ExecutionStatus.java         # Outcome enum
-│       │   │   ├── ExecutionEvent.java          # Immutable event record
-│       │   │   ├── RunInfo.java                 # Run-level info for the SPI
-│       │   │   └── TestIdentity.java            # Identity + run-context model
-│       │   └── spi/
-│       │       └── ExecutionReporter.java       # onEvent(...), onRunStarted/Finished, flush(), close()
-│       ├── main/resources/META-INF/services/
-│       │   └── org.testng.ITestNGListener       # SPI registration for auto-use
-│       └── test/java/...                        # Unit + concurrency tests
+│   └── src/main/java/.../live/core/
+│       ├── LiveReportingListener.java           # TestNG lifecycle listener entry point
+│       ├── ExecutionEventBus.java               # Asynchronous, thread-safe reporter dispatch
+│       ├── TestRunIdGenerator.java              # Canonical identity & SHA-256 generator
+│       ├── model/                               # Immutable event models (State, Status, Identity)
+│       └── spi/ExecutionReporter.java           # Pluggable reporter SPI
 │
-├── reporter-json/                               # artifactId: testng-live-reporter-json        (depends: core)
-│   ├── src/main/java/io/github/prmiguel/testng/live/json/
-│   │   ├── JsonExecutionReporter.java            # Live NDJSON stream + consolidated document
-│   │   ├── JsonReporterConfiguration.java        # Property/env/file configuration
-│   │   └── spi/EventRecordEncoder.java           # Backend seam shared with future reporters
-│   ├── src/main/resources/
-│   │   ├── META-INF/services/…ExecutionReporter  # SPI registration
-│   │   └── schema/testng-live-report-v1.schema.json
-│   └── README.md                                 # Properties, formats, known limitations
+├── reporter-json/                               # artifactId: testng-live-reporter-json
+│   └── src/main/java/.../live/json/
+│       ├── JsonExecutionReporter.java          # Real-time NDJSON streamer & JSON assembler
+│       └── JsonReporterConfiguration.java      # Property, env var & file configuration
 │
-├── reporter-sqlite/                             # Planned
-├── reporter-cache-db/                           # Planned
-├── reporter-ctrf/                               # Planned
+├── docs/                                        # Detailed guides & architecture specifications
+│   ├── architecture.md                          # Event model, state transitions & identity hashing
+│   ├── configuration.md                         # Full system properties & environment variables reference
+│   ├── integration-guide.md                     # Maven, Gradle, CLI & programmatic usage
+│   ├── consumer-baby-steps.md                   # Linear walkthrough cookbook & Agent Skill
+│   ├── jitpack-usage.md                         # JitPack classpath injection guide
+│   ├── testng-listeners.md                      # Comprehensive guide to all 17 TestNG listeners
+│   └── ci-and-workflows.md                      # CI pipeline, dogfooding & validator details
 │
-├── integration-tests/                           # Test-only module
-│   └── src/test/
-│       ├── java/...                             # Parallel, data-provider, SPI E2E suites
-│       └── resources/testng.xml
+├── examples/
+│   └── jitpack-consumer/                        # Runnable consumer validating zero-POM jar injection
 │
-├── docs/
-│   ├── jitpack-usage.md                         # Injecting the jars, no POM dependency
-│   ├── consumer-baby-steps.md                   # Step-by-step cookbook + Agent Skill
-│   └── testng-listeners.md                      # Every TestNG listener interface + samples
-│
-├── examples/jitpack-consumer/                   # Runnable consumer, reporter NOT in its pom
-│   ├── pom.xml                                  # TestNG only, on purpose
-│   ├── run.sh                                   # Fetch jars, compile, run, validate
-│   └── src/main/java/demo/SmokeTest.java
-│
-├── .github/workflows/
-│   ├── ci.yml                                   # Build, tests, dogfood + JitPack injection
-│   ├── compatibility.yml                        # TestNG version matrix (schedule + manual)
-│   ├── codeql.yml                               # CodeQL java-kotlin analysis
-│   └── dependency-review.yml                    # Pull-request dependency review
-│
-└── README.md
+└── .github/workflows/                           # CI, compatibility matrix, CodeQL & dependency review
 ```
+
+### 🧩 Module Status
+
+| Module | Artifact | Status | Description |
+|---|---|---|---|
+| `core` | `testng-live-reporter-core` | ✅ **Active** | Listener engine, event bus, identity hashing, and SPI. |
+| `reporter-json` | `testng-live-reporter-json` | ✅ **Active** | Append-only NDJSON stream and consolidated JSON document. |
+| `reporter-sqlite` | `testng-live-reporter-sqlite` | ⏳ *Planned* | Queryable local SQLite test history. |
+| `reporter-cache-db` | `testng-live-reporter-cache-db` | ⏳ *Planned* | Embedded cache (H2 / MapDB) for live queries. |
+| `reporter-ctrf` | `testng-live-reporter-ctrf` | ⏳ *Planned* | Common Test Report Format output. |
 
 ---
 
-## 🛡️ Standards and best practices
+## 🚀 Quick Start
 
-- **Java 21** baseline.
-- TestNG is a `provided` dependency in every module.
-- Event records are immutable.
-- All timestamps are UTC with ISO-8601 formatting.
-- Reporters are isolated from each other; one failing reporter must not affect others.
-- Reporters never block TestNG worker threads.
-- Canonical identity serialization is deterministic across runs.
-- Event schemas carry their own `schemaVersion`, independent of the project version.
-- Unit tests cover core behavior; concurrency tests cover parallel suites;
-  integration tests dogfood `reporter-json`.
-- CI uses least-privilege permissions, pinned actions, explicit timeouts, and
-  concurrency controls.
+### 1. Add Dependencies
 
----
-
-## 🏷️ Versioning and compatibility
-
-- **Unified Semantic Versioning** across all modules using the parent `${revision}`
-  property plus `flatten-maven-plugin`.
-- All modules released together with the same version, e.g. `1.0.0`.
-- API and event-schema compatibility:
-  - **Patch** (`1.0.x`) — bug fixes only, no contract changes.
-  - **Minor** (`1.x.0`) — additive changes, backward compatible.
-  - **Major** (`x.0.0`) — breaking changes to public API or event schema.
-- Event `schemaVersion` is bumped when the event structure changes in a
-  non-backward-compatible way. The current version is **2**; `v1` stays published because
-  the record shapes are unchanged.
-
----
-
-## 📦 Publishing
-
-### GitHub Packages
-
-Snapshots and releases are published to GitHub Packages:
+Add the core listener and the JSON reporter to your `pom.xml`:
 
 ```xml
-<dependency>
-    <groupId>io.github.prmiguel</groupId>
-    <artifactId>testng-live-reporter-json</artifactId>
-    <version>1.0.0</version>
-</dependency>
+<dependencies>
+    <dependency>
+        <groupId>io.github.prmiguel</groupId>
+        <artifactId>testng-live-reporter-core</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>io.github.prmiguel</groupId>
+        <artifactId>testng-live-reporter-json</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
 ```
 
-GitHub Packages requires authentication in `~/.m2/settings.xml`.
+*(Or use on-demand JitPack artifacts: `com.github.prmiguel.testng-live-reporter` — see [JitPack Usage](docs/jitpack-usage.md)).*
 
-### JitPack
+### 2. Run Tests
 
-Built on demand from a tag, branch, or commit hash — no authentication needed.
-`jitpack.yml` selects JDK 21 (the default image ships JDK 17, which cannot compile
-`release 21`) and runs the build through the committed Maven wrapper.
-
-For a multi-module project the group is `com.github.<user>.<repo>` and the artifact is
-the module artifactId:
-
-```xml
-<dependency>
-    <groupId>com.github.prmiguel.testng-live-reporter</groupId>
-    <artifactId>testng-live-reporter-json</artifactId>
-    <version>1.0.0</version> <!-- a tag, branch-SNAPSHOT, or commit hash -->
-</dependency>
-```
-
-Depend on `com.github.prmiguel:testng-live-reporter` instead to pull in every module.
-JitPack rewrites the internal module dependency to the same requested version, so a single
-version resolves the whole graph. Note that a build only works for commits that already
-contain `jitpack.yml`, and `1.0.0-SNAPSHOT` in the POM is replaced by the requested version
-at publish time.
-
-Prefer not to declare a dependency at all? [`docs/jitpack-usage.md`](docs/jitpack-usage.md)
-shows how to inject the jars onto a classpath instead, and includes a runnable example in
-[`examples/jitpack-consumer`](examples/jitpack-consumer).
-
-New to the project? [`docs/consumer-baby-steps.md`](docs/consumer-baby-steps.md) is the
-linear cookbook: download → copy → register → check → run → read and filter the output, plus
-a ready-made Agent Skill you can drop into another repository.
-
-Wondering which TestNG listener interface to implement?
-[`docs/testng-listeners.md`](docs/testng-listeners.md) covers all 17 of them — what each is
-good for, a compileable sample, and the pitfalls (`IHookable` silently skipping a test,
-`onConfigurationFailure` being called twice, ServiceLoader creating a second instance).
-
----
-
-## 🔌 External usage
-
-### 1. Maven dependency + classpath
-
-Add the reporter as a test dependency and let `ServiceLoader` attach it to the core
-listener. The reporter is **not** an `ITestNGListener`, so it must not be declared in
-`<listeners>`; see [`reporter-json/README.md`](reporter-json/README.md) for the full
-property reference.
-
-```xml
-<dependency>
-    <groupId>io.github.prmiguel</groupId>
-    <artifactId>testng-live-reporter-core</artifactId>
-    <version>1.0.0</version>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>io.github.prmiguel</groupId>
-    <artifactId>testng-live-reporter-json</artifactId>
-    <version>1.0.0</version>
-    <scope>test</scope>
-</dependency>
-```
-
-If explicit registration is required, register the core *listener* only:
-
-```xml
-<listeners>
-    <listener class-name="io.github.prmiguel.testng.live.core.LiveReportingListener"/>
-</listeners>
-```
-
-### 2. SPI auto-registration
-
-Place both JARs on the test classpath. Two service files do the work:
-`META-INF/services/org.testng.ITestNGListener` (in `core`) makes TestNG load the listener,
-and `META-INF/services/io.github.prmiguel.testng.live.core.spi.ExecutionReporter` (in
-`reporter-json`) attaches the JSON reporter to it.
-
-### 3. External JAR without editing project source
-
-The cleanest way is to install the JAR into the local Maven repository and add it as
-a test-scoped dependency:
+Run your test suite normally:
 
 ```bash
-mvn install:install-file \
-  -Dfile=testng-live-reporter-json-1.0.0.jar \
-  -DgroupId=io.github.prmiguel \
-  -DartifactId=testng-live-reporter-json \
-  -Dversion=1.0.0 \
-  -Dpackaging=jar
+mvn test
 ```
 
-Then declare the listener in `testng.xml` or rely on SPI.
+Because `core` and `reporter-json` register via Java SPI (`META-INF/services`), **no XML or code edits are required**.
 
-Alternatively, run TestNG directly from the command line with the JAR on the
-classpath:
+### 3. Inspect Live Output
 
-```bash
-java -cp "testng-7.x.jar:your-tests.jar:testng-live-reporter-json-1.0.0.jar" \
-  org.testng.TestNG \
-  -listener io.github.prmiguel.testng.live.json.JsonExecutionReporter \
-  testng.xml
-```
+Output files are written to `target/testng-live-reporter/`:
 
-### 4. Programmatic registration
-
-```java
-TestNG testNG = new TestNG();
-testNG.setTestClasses(new Class[]{MyTest.class});
-testNG.addListener(new JsonExecutionReporter());
-testNG.run();
-```
+- `<timestamp>-<runId>.ndjson` — Watch live events while tests execute:
+  ```bash
+  tail -f target/testng-live-reporter/*.ndjson
+  ```
+- `<timestamp>-<runId>.json` — Read the consolidated report when tests finish.
 
 ---
 
-## 🔄 GitHub Actions workflows
+## 🏷️ Versioning & Compatibility
 
-| Workflow | Trigger | Purpose |
-|---|---|---|
-| `ci.yml` | PR + push to `main` | Build, full test suite, dogfood reporter-json, validate emitted reports, JDK 21 |
-| `compatibility.yml` | Schedule + manual | Test against supported TestNG versions (7.10.2, 7.11.0) |
-| `codeql.yml` | PR + push to `main` + schedule | CodeQL analysis for `java-kotlin` |
-| `dependency-review.yml` | PR only | Dependency vulnerability and license review |
-| `snapshots.yml` / `release.yml` | — | Not implemented yet: the POM has no `distributionManagement`, so nothing is published |
+- **Project Versioning**: Uses unified **Semantic Versioning** (`MAJOR.MINOR.PATCH`) across all modules via Maven `${revision}` and `flatten-maven-plugin`.
+  - **Patch (`1.0.x`)**: Bug fixes, performance improvements; no API or schema changes.
+  - **Minor (`1.x.0`)**: Backwards-compatible additions and features.
+  - **Major (`x.0.0`)**: Breaking API or schema changes.
+- **Event Schema Versioning**: Event payloads include independent `schemaVersion` attributes (currently **v2**). Schema versions change only when breaking payload structure modifications occur.
+- **Java Baseline**: Requires **JDK 21** or newer.
+- **TestNG Compatibility**: Validated against **TestNG 7.10.x** and **7.11.x**.
 
-Workflows follow secure defaults: least-privilege `permissions`, actions pinned to major
-version tags, explicit `timeout-minutes`, Maven dependency caching, and artifact retention
-limits. `ci.yml` additionally validates the real JSON output — a dogfood run writes both
-files, then `.github/scripts/validate-reports.mjs` asserts every NDJSON line parses, the
-record counts match the summary totals, no `(executionId, state)` pair repeats, and the
-consolidated document splices exactly the streamed events.
+---
 
-```mermaid
-flowchart LR
-    A[git tag v1.0.0] --> B[release.yml — planned]
-    B --> C[Build + tests]
-    C --> D[Publish to GitHub Packages]
-    D --> E[JitPack builds tag]
-    E --> F[Consumers download]
+## ⚙️ Configuration
+
+Live reporting works out of the box with zero setup. You can customize output directories, filtering, and formats via Java system properties, environment variables, or properties files:
+
+```bash
+mvn test \
+  -Dtestng.live.json.output-dir="custom-reports" \
+  -Dtestng.live.json.include-statuses=FAILED,PASSED \
+  -Dtestng.live.json.flush-each-event=true
 ```
+
+👉 See the [Configuration Reference](docs/configuration.md) for the complete list of options.
+
+---
+
+## 📚 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+
+- 🏗️ **[Architecture & Event Model](docs/architecture.md)** — Deep dive into lifecycle states, statuses, thread-safety, and canonical identity hashing.
+- ⚙️ **[Configuration Reference](docs/configuration.md)** — Complete list of properties, environment variables, filtering, and precedence.
+- 🔌 **[Integration & Usage Guide](docs/integration-guide.md)** — Maven, TestNG XML, programmatic setup, and zero-POM classpath injection.
+- 🧪 **[Consumer Baby Steps Cookbook](docs/consumer-baby-steps.md)** — Step-by-step tutorial with copy-paste instructions and a pre-built Agent Skill.
+- 📦 **[JitPack Usage Guide](docs/jitpack-usage.md)** — Consuming releases and commit snapshots via JitPack.
+- 👂 **[TestNG Listeners Guide](docs/testng-listeners.md)** — Breakdown of all 17 TestNG listener interfaces and common pitfalls.
+- 🔄 **[CI & Workflows](docs/ci-and-workflows.md)** — Overview of automated pipelines, dogfood verification, and report validation.
 
 ---
 
 ## 🗺️ Roadmap
 
-1. **Milestone 1** — `core` + `reporter-json`: listener hooks, event model,
-   thread-safe bus, identity hashing, JSON output, unit + integration tests.
-2. **Milestone 2** — CI/CD, publishing to GitHub Packages, JitPack availability,
-   dogfood reporting in workflows.
-3. **Milestone 3** — `reporter-sqlite`: persistent queryable execution history.
-4. **Milestone 4** — `reporter-cache-db`: local in-memory/file-backed cache for
-   live reads.
-5. **Milestone 5** — `reporter-ctrf`: Common Test Report Format output.
-6. **Future** — AI/query interfaces, dashboards, remote backends (not planned yet).
+- [x] **Milestone 1**: Core listener, non-blocking event bus, canonical identity generator, and `reporter-json`.
+- [x] **Milestone 2**: CI pipeline, dogfood validation script, and JitPack consumer integration.
+- [ ] **Milestone 3**: `reporter-sqlite` — Persistent local execution database.
+- [ ] **Milestone 4**: `reporter-cache-db` — Embedded in-memory / cache storage for instant querying.
+- [ ] **Milestone 5**: `reporter-ctrf` — Common Test Report Format compatibility.
+
+---
+
+## 📄 License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
