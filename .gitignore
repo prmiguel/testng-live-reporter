@@ -1,0 +1,14 @@
+target/
+.flattened-pom.xml
+*.iml
+.idea/
+.vscode/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.DS_Store
+Thumbs.db
+
+test-output/
