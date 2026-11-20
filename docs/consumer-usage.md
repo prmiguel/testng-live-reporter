@@ -6,7 +6,7 @@ and explains how to verify everything worked before moving on.
 
 - For the full system properties and environment variables reference, see [`docs/configuration.md`](configuration.md).
 - For details on JitPack resolution, see [`docs/jitpack-usage.md`](jitpack-usage.md).
-- For pre-built AI agent integrations (including emoji progress reporting, failure root-cause analysis, DuckDB SQL historical analytics, and background polling), see [`docs/agent-skill-sample.md`](agent-skill-sample.md).
+- For pre-built AI agent integrations (including emoji progress reporting, failure root-cause analysis, multi-run matrix analytics using `jq`, and optional DuckDB SQL examples), see [`docs/agent-skill-sample.md`](agent-skill-sample.md).
 
 ---
 

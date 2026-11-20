@@ -6,23 +6,17 @@ Because `testng-live-reporter` writes an append-only `.ndjson` stream that is fl
 
 ---
 
-## 📋 Required CLI Tools & Capabilities
+## 📋 Required CLI Tool & Capabilities
 
-The skill relies on two fast, lightweight CLI tools:
+The skill relies on a single, universally available tool:
 
-1. **`jq` CLI (Required)**:
-   - Real-time streaming queries against `*.ndjson`.
-   - Live progress dashboards with emoji indicators while tests are in flight.
-   - Immediate inspection of newly completed or failed tests without waiting for the run to finish.
+- **`jq` CLI (Required)**:
+  - Real-time streaming queries against `*.ndjson`.
+  - Live progress dashboards with emoji indicators while tests are in flight.
+  - Test result failure diagnosis and root-cause analysis.
+  - Multi-run historical analytics (test stability, fixed test detection, cross-environment run comparison, and status matrix) reading `.json` documents in chronological order.
 
-2. **`duckdb` CLI (Required for Historical & Multi-Run Analytics)**:
-   - Serverless SQL engine that reads `.ndjson` and `.json` files directly from disk via `read_ndjson()` and `read_json_auto()`.
-   - **Historical Execution Tracking**: Query trends across the last $N$ runs.
-   - **Per-Test History**: Inspect the outcome history of a specific test across past executions.
-   - **Stable & Fixed Tests Identification**: Detect tests that consistently pass or tests that failed in a previous run and are now passing (fixed/recovered).
-   - **Cross-Run / Cross-Environment Comparison**: Compare runs across environments (e.g. `dev` vs. `uat` or `run-1` vs. `run-2`).
-   - **Run Matrix with Emoji Icons**: Generate a test result matrix where columns are `runId`s, rows are test names, and cells show status icons (`✅`, `❌`, `⏭️`, `⏱️`).
-   - **Test Result Analysis**: Synthesize high-level conclusions and explain root-cause failure reasons.
+*(For users who prefer SQL queries or need to analyze thousands of runs, see the [DuckDB SQL Alternative](#-alternative-multi-run-analytics-with-duckdb-sql) section at the end of this document.)*
 
 ---
 
@@ -48,7 +42,7 @@ Save the definition below as `SKILL.md` inside that directory (e.g. `.commandcod
 ````markdown
 ---
 name: testng-live-reporting
-description: Install, run, and query testng-live-reporter so TestNG executions emit live JSON reports. Use when asked to add live test reporting, monitor live test progress with emojis, list failed tests, perform test result analysis with root-cause explanations, or query multi-run history, matrices, and run comparisons using DuckDB SQL.
+description: Install, run, and query testng-live-reporter so TestNG executions emit live JSON reports. Use when asked to add live test reporting, monitor live test progress with emojis, list failed tests, perform test result analysis with root-cause explanations, or generate multi-run matrices and run comparisons using jq.
 argument-hint: "[install|check|status|progress|analysis|failures|history|compare|matrix] [project-dir]"
 ---
 
@@ -56,7 +50,7 @@ argument-hint: "[install|check|status|progress|analysis|failures|history|compare
 
 `testng-live-reporter` writes one append-only `.ndjson` stream plus one `.json` consolidated document per execution in `target/testng-live-reporter/`.
 
-This skill guides installing the jars, launching suites, querying live progress, analyzing test results, and running multi-run historical analytics via SQL.
+This skill guides installing the jars, launching suites, querying live progress, analyzing test results, and running multi-run historical analytics using standard `jq`.
 
 ## 🧭 Core Agent Rules
 
@@ -65,7 +59,7 @@ This skill guides installing the jars, launching suites, querying live progress,
   1. A summary with emoji icons (`🏁`, `✅`, `❌`, `⏭️`, `🏃`, `⏳`).
   2. A dedicated section listing all tests that finished failed.
 - **Provide automated root-cause analysis** when the user asks for `/analysis` or why tests failed.
-- **Use DuckDB SQL for historical analysis, run comparisons, and matrices** across multiple execution files.
+- **Use `jq` for multi-run analytics, run comparisons, and matrices** across ordered `*.json` files.
 - **Quote real numbers only.** If no report file exists, state that clearly and offer the install step.
 - **Do not block while tests run.** If tests run in the background, poll periodically using a non-blocking schedule (e.g. 5 minutes). Report only deltas (new completions or failures) and remain silent if state is unchanged.
 - **Prefer the newest report file for single-run queries:**
@@ -83,17 +77,14 @@ Verify the necessary tools are installed on the system:
 # 1. Java 21+ is required for the reporter
 java -version
 
-# 2. jq is required for streaming NDJSON parsing & live progress dashboards
+# 2. jq is required for streaming NDJSON parsing, progress dashboards, and multi-run analytics
 jq --version
-
-# 3. DuckDB is required for historical queries, test matrices, and cross-run SQL analytics
-duckdb --version
 ```
 
-If `jq` or `duckdb` is missing:
-- Debian/Ubuntu: `apt-get install -y jq duckdb`
-- macOS: `brew install jq duckdb`
-- Or download standalone binaries into `~/.local/bin` / `usr/local/bin`.
+If `jq` is missing:
+- Debian/Ubuntu: `apt-get install -y jq`
+- macOS: `brew install jq`
+- Alpine: `apk add jq`
 
 ---
 
@@ -261,7 +252,7 @@ jq -s -r '
 
 ### Formatting the Agent's Analysis Response
 
-The agent synthesizes the JSON above into an executive diagnostic report with the following sections:
+The agent synthesizes the extracted JSON into an executive diagnostic report with the following sections:
 
 1. **Executive Verdict & Summary**:
    - Total executions, overall pass percentage, and suite execution time.
@@ -300,38 +291,252 @@ The overall test suite is functionally healthy, but **one critical regression wa
 
 ---
 
-## 6. Multi-Run Historical Analytics with DuckDB SQL
+## 6. Multi-Run Historical Analytics using `jq`
 
-`duckdb` allows querying all current and archived report files (`target/testng-live-reporter/*.ndjson`) using high-performance SQL.
+By reading consolidated `.json` documents in chronological order (`ls -tr target/testng-live-reporter/*.json`), `jq` can perform multi-run aggregations, track test history, compare environments, and build test matrices without any external database.
 
-### Define the DuckDB View
+---
 
-In any query, reference the globbed NDJSON files directly:
+### Recipe A: Historical Runs Overview
 
-```sql
-CREATE OR REPLACE VIEW test_events AS
-SELECT 
-  runId,
-  test.readableKey AS test_name,
-  test.className AS class_name,
-  test.methodName AS method_name,
-  status,
-  durationMs,
-  failure.type AS failure_type,
-  failure.message AS failure_message,
-  timestamp,
-  attributes.phase AS phase
-FROM read_ndjson('target/testng-live-reporter/*.ndjson')
-WHERE type = 'test.event'
-  AND state = 'FINISHED'
-  AND (attributes.phase IS NULL OR attributes.phase = 'test');
+Presents an overview of recent test executions:
+
+```bash
+FILES=$(ls -tr target/testng-live-reporter/*.json 2>/dev/null | tail -10)
+
+jq -s -r '
+  "| Run ID | Started At | Total Tests | Passed | Failed | Skipped | Duration |",
+  "|:---|:---|:---:|:---:|:---:|:---:|:---:|",
+  (
+    .[] |
+    "| `\(.run.runId)` | \(.run.startedAt // "-") | \(.summary.totals.tests // 0) | ✅ \(.summary.totals.passed // 0) | ❌ \(.summary.totals.failed // 0) | ⏭️ \(.summary.totals.skipped // 0) | \(.summary.durationMs // 0)ms |"
+  )
+' $FILES
+```
+
+#### Output:
+| Run ID | Started At | Total Tests | Passed | Failed | Skipped | Duration |
+|:---|:---|:---:|:---:|:---:|:---:|:---:|
+| `run-20261118` | 2026-11-18T18:00:00Z | 10 | ✅ 10 | ❌ 0 | ⏭️ 0 | 3800ms |
+| `run-20261119` | 2026-11-19T22:30:00Z | 10 | ✅ 8 | ❌ 2 | ⏭️ 0 | 4100ms |
+| `run-20261120` | 2026-11-20T00:15:00Z | 10 | ✅ 9 | ❌ 1 | ⏭️ 0 | 4500ms |
+
+---
+
+### Recipe B: History of a Given Test Across Last N Runs
+
+Tracks the execution history, durations, and failure causes of a specific test:
+
+```bash
+TEST_NAME="com.example.PaymentTest.testCharge"
+FILES=$(ls -tr target/testng-live-reporter/*.json 2>/dev/null | tail -5)
+
+jq -s -r --arg test "$TEST_NAME" '
+  "| Run ID | Started At | Outcome | Duration | Failure Reason |",
+  "|:---|:---|:---:|:---:|:---|",
+  (
+    .[] | .run.runId as $r | .run.startedAt as $time |
+    (.tests[]? | select(.readableKey == $test)) |
+    "| `\($r)` | \($time // "-") | " +
+    (if .status == "PASSED" then "✅ PASSED" elif .status == "FAILED" then "❌ FAILED" else "⏭️ SKIPPED" end) +
+    " | \(.durationMs // 0)ms | \(.failure.message // "-") |"
+  )
+' $FILES
+```
+
+#### Output:
+| Run ID | Started At | Outcome | Duration | Failure Reason |
+|:---|:---|:---:|:---:|:---|
+| `run-20261118` | 2026-11-18T18:00:00Z | ❌ FAILED | 705ms | Expected 200 but received 500 |
+| `run-20261119` | 2026-11-19T22:30:00Z | ❌ FAILED | 710ms | Expected 200 but received 500 |
+| `run-20261120` | 2026-11-20T00:15:00Z | ✅ PASSED | 680ms | - |
+
+---
+
+### Recipe C: Identify Consistently Passing Tests
+
+Finds tests that have passed 100% of the time across all recent runs:
+
+```bash
+FILES=$(ls -tr target/testng-live-reporter/*.json 2>/dev/null | tail -10)
+
+jq -s -r '
+  [.[].tests[]?]
+  | group_by(.readableKey)
+  | map(select(all(.[]; .status == "PASSED")))
+  | "| Test Name | Total Passed Runs | Status |",
+    "|:---|:---:|:---|",
+    (.[] | "| `\(.[0].readableKey)` | \(length) | ✅ 100% Reliable |")
+' $FILES
 ```
 
 ---
 
-### Query A: Historical Runs Overview
+### Recipe D: Identify Fixed Tests (Failed Previously, Now Passed)
 
-Shows the aggregate results of recent executions:
+Compares the last two runs to identify test regressions that were successfully resolved:
+
+```bash
+FILES=$(ls -tr target/testng-live-reporter/*.json 2>/dev/null | tail -2)
+
+jq -s -r '
+  if length < 2 then "⚠️ Need at least 2 runs to detect fixed tests." else
+    .[-2] as $prev | .[-1] as $curr
+    | ($prev.tests // [] | INDEX(.readableKey)) as $prevTests
+    | [$curr.tests[]? | select(.status == "PASSED" and ($prevTests[.readableKey].status == "FAILED" or $prevTests[.readableKey].status == "ERROR"))] as $fixed
+    | if ($fixed | length) == 0 then "✅ No recovered tests detected between the last two runs." else
+        "### 🎉 Fixed / Recovered Tests (Failed in \($prev.run.runId), now Passed in \($curr.run.runId))\n",
+        ($fixed[] | "- ✅ `\(.readableKey)` (was: ❌ \($prevTests[.readableKey].status))")
+      end
+  end
+' $FILES
+```
+
+#### Output:
+```markdown
+### 🎉 Fixed / Recovered Tests (Failed in run-20261119, now Passed in run-20261120)
+- ✅ `com.example.PaymentTest.testCharge` (was: ❌ FAILED)
+```
+
+---
+
+### Recipe E: Compare Two Specific Runs (e.g. `dev` vs `uat`)
+
+Compares two execution runs to highlight regressions or divergence:
+
+```bash
+RUN_A="target/testng-live-reporter/20261120-run-dev.json"
+RUN_B="target/testng-live-reporter/20261120-run-uat.json"
+
+jq -s -r '
+  .[0] as $runA | .[1] as $runB
+  | ($runA.tests // [] | INDEX(.readableKey)) as $a
+  | ($runB.tests // [] | INDEX(.readableKey)) as $b
+  | (([$runA.tests[]?.readableKey] + [$runB.tests[]?.readableKey]) | unique | sort) as $allKeys
+  | "| Test Name | \($runA.run.runId) | \($runB.run.runId) | Diff |",
+    "|:---|:---:|:---:|:---|",
+    (
+      $allKeys[] | . as $k |
+      ($a[$k].status // "NOT_RUN") as $as |
+      ($b[$k].status // "NOT_RUN") as $bs |
+      (if $as == $bs then "⚖️ Unchanged"
+       elif $as == "PASSED" and $bs == "FAILED" then "🚨 Regression in \($runB.run.runId)"
+       elif $as == "FAILED" and $bs == "PASSED" then "✨ Passed in \($runB.run.runId)"
+       else "⚠️ Diverged" end) as $diff |
+      "| `\($k)` | \($as) | \($bs) | \($diff) |"
+    )
+' "$RUN_A" "$RUN_B"
+```
+
+#### Output:
+| Test Name | run-dev | run-uat | Diff |
+|:---|:---:|:---:|:---|
+| `com.example.AuthTest.testLogin` | PASSED | PASSED | ⚖️ Unchanged |
+| `com.example.CheckoutTest.testCart` | PASSED | FAILED | 🚨 Regression in run-uat |
+| `com.example.PaymentTest.testCharge` | FAILED | PASSED | ✨ Passed in run-uat |
+
+---
+
+### Recipe F: Test Results Matrix with Status Icons
+
+Generates a markdown table where columns are `runId`s, rows are test names, and cells show emoji status icons:
+
+```bash
+FILES=$(ls -tr target/testng-live-reporter/*.json 2>/dev/null | tail -5)
+
+jq -s -r '
+  [.[].run.runId] as $runs
+  | ([.[].tests[]?.readableKey] | unique | sort) as $allTests
+  | (map({key: .run.runId, value: (.tests // [] | INDEX(.readableKey))}) | from_entries) as $byRun
+  | ("| Test Name | " + ($runs | join(" | ")) + " |"),
+    ("|:---| " + ([$runs[] | ":---:"] | join(" | ")) + " |"),
+    (
+      $allTests[] | . as $t |
+      "| `\($t)` | " +
+      ([
+        $runs[] | . as $r |
+        ($byRun[$r][$t].status // "NOT_RUN") as $st |
+        if $st == "PASSED" then "✅"
+        elif $st == "FAILED" then "❌"
+        elif $st == "SKIPPED" then "⏭️"
+        elif $st == "NOT_RUN" then "⚪"
+        else "❓" end
+      ] | join(" | ")) + " |"
+    )
+' $FILES
+```
+
+#### Rendered Matrix Output:
+| Test Name | run-20261118 | run-20261119 | run-20261120 |
+|:---| :---: | :---: | :---: |
+| `com.example.AuthTest.testLogin` | ✅ | ✅ | ✅ |
+| `com.example.AuthTest.testOAuth` | ✅ | ✅ | ✅ |
+| `com.example.CheckoutTest.testCart` | ✅ | ❌ | ❌ |
+| `com.example.PaymentTest.testCharge` | ❌ | ❌ | ✅ |
+| `com.example.ReportTest.exportCsv` | ⏭️ | ✅ | ✅ |
+
+*Matrix observations:* `PaymentTest.testCharge` was failing in the first two runs and is now resolved (`✅`) in `run-20261120`. `CheckoutTest.testCart` regressed in `run-20261119` and remains broken (`❌`).
+
+---
+
+## 7. Background Polling (Non-blocking)
+
+When test execution runs asynchronously in the background, schedule periodic checks rather than blocking:
+
+```
+schedule(CronExpression: "*/5 * * * *", Prompt: "Check testng-live-reporter progress and report deltas")
+```
+
+Rules for background polling:
+1. Re-evaluate `$F` on every tick (new executions generate new files).
+2. Report **only deltas** (new completions or newly failed tests). If counts and states have not changed, do not post redundant messages.
+3. Once `🏁 FINISHED` is detected, report the final totals and failed tests summary, then cancel or stop the schedule.
+
+---
+
+## 8. Troubleshooting
+
+| Issue | Cause | Fix |
+|---|---|---|
+| `jq: command not found` | jq CLI is not installed | Install `jq` via `apt install jq` or `brew install jq` |
+| No report written | Jars missing from classpath | Add `lib/*.jar` to execution classpath; verify SPI service files |
+| `UnsupportedClassVersionError` | JDK < 21 | Ensure tests execute under JDK 21+ |
+| Numbers mismatch | Intermediate events counted | Filter `state == "FINISHED"` or read `run.summary.totals.tests` |
+| `@BeforeMethod` failure shows tests as SKIPPED | TestNG skips downstream tests on config failure | Check records where `attributes.phase == "configuration"` |
+````
+
+---
+
+## 💡 Using the Skill
+
+Once installed, invoke the skill through your AI agent's command interface:
+
+```bash
+# Check live progress mid-flight
+/testng-live-reporting progress
+
+# Executive analysis & root-cause explanation for failures
+/testng-live-reporting analysis
+
+# Multi-run test matrix with emoji status icons
+/testng-live-reporting matrix
+
+# Compare runs across environments
+/testng-live-reporting compare
+
+# Track history of a given test
+/testng-live-reporting history
+```
+
+---
+
+## 🦆 Alternative: Multi-Run Analytics with DuckDB SQL
+
+While `jq` provides a zero-dependency solution, the **`duckdb` CLI** is an excellent alternative for teams or agents that prefer standard SQL syntax (`SELECT`, `JOIN`, `PIVOT`) or need to analyze hundreds of archived executions without loading them into a database server.
+
+DuckDB reads `.ndjson` and `.json` files directly from disk via `read_ndjson()` and `read_json_auto()`.
+
+### 1. Historical Runs Overview
 
 ```bash
 duckdb -box -c "
@@ -351,22 +556,7 @@ LIMIT 10;
 "
 ```
 
-#### Output:
-```
-┌──────────────┬──────────────────────────┬─────────────┬────────┬────────┬─────────┬───────────┐
-│    runId     │        started_at        │ total_tests │ passed │ failed │ skipped │ pass_rate │
-├──────────────┼──────────────────────────┼─────────────┼────────┼────────┼─────────┼───────────┤
-│ run-20261120 │ 2026-11-20T00:15:00.000Z │          10 │      9 │      1 │       0 │ 90.0%     │
-│ run-20261119 │ 2026-11-19T22:30:00.000Z │          10 │      8 │      2 │       0 │ 80.0%     │
-│ run-20261118 │ 2026-11-18T18:00:00.000Z │          10 │     10 │      0 │       0 │ 100.0%    │
-└──────────────┴──────────────────────────┴─────────────┴────────┴────────┴─────────┴───────────┘
-```
-
----
-
-### Query B: History of a Given Test Across Last N Runs
-
-Tracks the stability and duration of a specific test over time:
+### 2. History of a Specific Test
 
 ```bash
 TEST_NAME="com.example.PaymentTest.testCharge"
@@ -392,43 +582,7 @@ LIMIT 5;
 "
 ```
 
-#### Output:
-```
-┌──────────────┬──────────────────────────┬───────────┬──────────┬─────────────────────────────┐
-│    runId     │        timestamp         │  outcome  │ duration │       failure_reason        │
-├──────────────┼──────────────────────────┼───────────┼──────────┼─────────────────────────────┤
-│ run-20261120 │ 2026-11-20T00:15:03.200Z │ ✅ PASSED │ 680ms    │ -                           │
-│ run-20261119 │ 2026-11-19T22:30:02.100Z │ ❌ FAILED │ 710ms    │ Expected 200 but received 500│
-│ run-20261118 │ 2026-11-18T18:00:04.500Z │ ❌ FAILED │ 705ms    │ Expected 200 but received 500│
-│ run-20261117 │ 2026-11-17T12:00:01.000Z │ ✅ PASSED │ 650ms    │ -                           │
-└──────────────┴──────────────────────────┴───────────┴──────────┴─────────────────────────────┘
-```
-
----
-
-### Query C: Identify Tests That Passed Consistently
-
-Finds completely reliable tests that have never failed across all historical runs:
-
-```bash
-duckdb -box -c "
-SELECT 
-  test.readableKey AS test_name,
-  COUNT(*) AS total_executions,
-  '✅ 100% Passed' AS status
-FROM read_ndjson('target/testng-live-reporter/*.ndjson')
-WHERE type = 'test.event' AND state = 'FINISHED'
-GROUP BY test.readableKey
-HAVING COUNT(*) FILTER (WHERE status != 'PASSED') = 0
-ORDER BY test_name;
-"
-```
-
----
-
-### Query D: Identify Fixed Tests (Failed Previously, Now Passed)
-
-Detects test regressions that were successfully resolved in the latest run:
+### 3. Identify Fixed Tests (Failed Previously, Now Passed)
 
 ```bash
 duckdb -box -c "
@@ -461,20 +615,7 @@ WHERE t2.status IN ('FAILED', 'ERROR')
 "
 ```
 
-#### Output:
-```
-┌──────────────────────────────────────┬─────────────────┬────────────────┬──────────────────────┐
-│              test_name               │ previous_status │ current_status │      resolution      │
-├──────────────────────────────────────┼─────────────────┼────────────────┼──────────────────────┤
-│ com.example.PaymentTest.testCharge   │ ❌ FAILED        │ ✅ PASSED      │ 🎉 Fixed / Recovered │
-└──────────────────────────────────────┴─────────────────┴────────────────┴──────────────────────┘
-```
-
----
-
-### Query E: Compare Runs (e.g. `dev` vs `uat`, or Run A vs Run B)
-
-Compares two specific runs to detect regressions between environments:
+### 4. Cross-Environment Run Comparison
 
 ```bash
 RUN_DEV="run-dev-101"
@@ -507,22 +648,7 @@ ORDER BY test_name;
 "
 ```
 
-#### Output:
-```
-┌─────────────────────────────────────┬────────────┬────────────┬─────────────────────┐
-│              test_name              │ dev_status │ uat_status │        diff         │
-├─────────────────────────────────────┼────────────┼────────────┼─────────────────────┤
-│ com.example.AuthTest.testLogin      │ PASSED     │ PASSED     │ ⚖️ Unchanged        │
-│ com.example.CheckoutTest.testCart   │ PASSED     │ FAILED     │ 🚨 Regression in UAT│
-│ com.example.PaymentTest.testCharge  │ FAILED     │ PASSED     │ ✨ Passed in UAT    │
-└─────────────────────────────────────┴────────────┴────────────┴─────────────────────┘
-```
-
----
-
-### Query F: Test Results Matrix with Status Icons
-
-Generates a dynamic pivot matrix where columns are `runId`s, rows are test names, and cells display emoji icons:
+### 5. Native Pivot Matrix with Status Icons
 
 ```bash
 duckdb -box -c "
@@ -545,71 +671,4 @@ ON runId
 USING FIRST(icon)
 ORDER BY test_name;
 "
-```
-
-#### Rendered Matrix Output:
-```
-┌─────────────────────────────────────────┬──────────────┬──────────────┬──────────────┐
-│                test_name                │ run-20261118 │ run-20261119 │ run-20261120 │
-├─────────────────────────────────────────┼──────────────┼──────────────┼──────────────┤
-│ com.example.AuthTest.testLogin          │ ✅           │ ✅           │ ✅           │
-│ com.example.AuthTest.testOAuth          │ ✅           │ ✅           │ ✅           │
-│ com.example.CheckoutTest.testCart       │ ✅           │ ❌           │ ❌           │
-│ com.example.PaymentTest.testCharge      │ ❌           │ ❌           │ ✅           │
-│ com.example.ReportTest.exportCsv        │ ⏭️           │ ✅           │ ✅           │
-└─────────────────────────────────────────┴──────────────┴──────────────┴──────────────┘
-```
-
-*Note from matrix:* `PaymentTest.testCharge` was failing in the first two runs and is now fixed in the latest run (`run-20261120`), whereas `CheckoutTest.testCart` regressed in `run-20261119` and remains broken.
-
----
-
-## 7. Background Polling (Non-blocking)
-
-When test execution runs asynchronously in the background, schedule periodic checks rather than blocking:
-
-```
-schedule(CronExpression: "*/5 * * * *", Prompt: "Check testng-live-reporter progress and report deltas")
-```
-
-Rules for background polling:
-1. Re-evaluate `$F` on every tick (new executions generate new files).
-2. Report **only deltas** (new completions or newly failed tests). If counts and states have not changed, do not post redundant messages.
-3. Once `🏁 FINISHED` is detected, report the final totals and failed tests summary, then cancel or stop the schedule.
-
----
-
-## 8. Troubleshooting
-
-| Issue | Cause | Fix |
-|---|---|---|
-| `duckdb: command not found` | DuckDB CLI is not installed | Install via package manager or place binary in `~/.local/bin` |
-| `jq: command not found` | jq CLI is not installed | Install `jq` via `apt install jq` or `brew install jq` |
-| No report written | Jars missing from classpath | Add `lib/*.jar` to execution classpath; verify SPI service files |
-| `UnsupportedClassVersionError` | JDK < 21 | Ensure tests execute under JDK 21+ |
-| Numbers mismatch | Intermediate events counted | Filter `state == "FINISHED"` or read `run.summary.totals.tests` |
-| `@BeforeMethod` failure shows tests as SKIPPED | TestNG skips downstream tests on config failure | Check records where `attributes.phase == "configuration"` |
-````
-
----
-
-## 💡 Using the Skill
-
-Once installed, invoke the skill through your AI agent's command interface:
-
-```bash
-# Check live progress mid-flight
-/testng-live-reporting progress
-
-# Executive analysis & root-cause explanation for failures
-/testng-live-reporting analysis
-
-# Multi-run test matrix with emoji status icons
-/testng-live-reporting matrix
-
-# Compare runs across environments
-/testng-live-reporting compare
-
-# Track history of a given test
-/testng-live-reporting history
 ```
