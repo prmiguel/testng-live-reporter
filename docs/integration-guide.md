@@ -118,6 +118,7 @@ public class CustomRunner {
 
 ## 📚 Related Guides
 
-- [Baby Steps Cookbook](consumer-baby-steps.md) — Step-by-step linear tutorial with copy-paste commands and an AI Agent skill.
+- [Consumer Usage Guide](consumer-usage.md) — Step-by-step linear tutorial with copy-paste commands.
+- [AI Agent Skill Guide](agent-skill-sample.md) — Pre-built Agent Skill with emoji progress summaries and failed tests breakdown.
 - [JitPack Integration Guide](jitpack-usage.md) — Detailed guide on fetching JARs from JitPack.
 - [Configuration Reference](configuration.md) — All supported properties and environment variables.

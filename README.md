@@ -48,7 +48,8 @@ testng-live-reporter/
 │   ├── architecture.md                          # Event model, state transitions & identity hashing
 │   ├── configuration.md                         # Full system properties & environment variables reference
 │   ├── integration-guide.md                     # Maven, Gradle, CLI & programmatic usage
-│   ├── consumer-baby-steps.md                   # Linear walkthrough cookbook & Agent Skill
+│   ├── consumer-usage.md                        # Linear walkthrough cookbook & consumer usage
+│   ├── agent-skill-sample.md                    # Pre-built AI Agent Skill & progress reporting
 │   ├── jitpack-usage.md                         # JitPack classpath injection guide
 │   ├── testng-listeners.md                      # Comprehensive guide to all 17 TestNG listeners
 │   └── ci-and-workflows.md                      # CI pipeline, dogfooding & validator details
@@ -152,7 +153,8 @@ Detailed documentation is available in the [`docs/`](docs/) directory:
 - 🏗️ **[Architecture & Event Model](docs/architecture.md)** — Deep dive into lifecycle states, statuses, thread-safety, and canonical identity hashing.
 - ⚙️ **[Configuration Reference](docs/configuration.md)** — Complete list of properties, environment variables, filtering, and precedence.
 - 🔌 **[Integration & Usage Guide](docs/integration-guide.md)** — Maven, TestNG XML, programmatic setup, and zero-POM classpath injection.
-- 🧪 **[Consumer Baby Steps Cookbook](docs/consumer-baby-steps.md)** — Step-by-step tutorial with copy-paste instructions and a pre-built Agent Skill.
+- 🧪 **[Consumer Usage Guide](docs/consumer-usage.md)** — Step-by-step tutorial with copy-paste instructions for adding live reporting to an existing project.
+- 🤖 **[AI Agent Skill Guide](docs/agent-skill-sample.md)** — Pre-built Agent Skill with emoji progress reporting and failed tests summaries for AI coding assistants.
 - 📦 **[JitPack Usage Guide](docs/jitpack-usage.md)** — Consuming releases and commit snapshots via JitPack.
 - 👂 **[TestNG Listeners Guide](docs/testng-listeners.md)** — Breakdown of all 17 TestNG listener interfaces and common pitfalls.
 - 🔄 **[CI & Workflows](docs/ci-and-workflows.md)** — Overview of automated pipelines, dogfood verification, and report validation.
