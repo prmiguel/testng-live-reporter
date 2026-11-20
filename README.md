@@ -154,7 +154,7 @@ Detailed documentation is available in the [`docs/`](docs/) directory:
 - ⚙️ **[Configuration Reference](docs/configuration.md)** — Complete list of properties, environment variables, filtering, and precedence.
 - 🔌 **[Integration & Usage Guide](docs/integration-guide.md)** — Maven, TestNG XML, programmatic setup, and zero-POM classpath injection.
 - 🧪 **[Consumer Usage Guide](docs/consumer-usage.md)** — Step-by-step tutorial with copy-paste instructions for adding live reporting to an existing project.
-- 🤖 **[AI Agent Skill Guide](docs/agent-skill-sample.md)** — Pre-built Agent Skill with emoji progress reporting and failed tests summaries for AI coding assistants.
+- 🤖 **[AI Agent Skill Guide](docs/agent-skill-sample.md)** — Pre-built Agent Skill with emoji progress reporting, failure root-cause analysis, and DuckDB SQL historical analytics for AI coding assistants.
 - 📦 **[JitPack Usage Guide](docs/jitpack-usage.md)** — Consuming releases and commit snapshots via JitPack.
 - 👂 **[TestNG Listeners Guide](docs/testng-listeners.md)** — Breakdown of all 17 TestNG listener interfaces and common pitfalls.
 - 🔄 **[CI & Workflows](docs/ci-and-workflows.md)** — Overview of automated pipelines, dogfood verification, and report validation.

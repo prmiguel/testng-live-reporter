@@ -6,7 +6,7 @@ and explains how to verify everything worked before moving on.
 
 - For the full system properties and environment variables reference, see [`docs/configuration.md`](configuration.md).
 - For details on JitPack resolution, see [`docs/jitpack-usage.md`](jitpack-usage.md).
-- For pre-built AI agent integrations (including emoji progress reporting and background polling), see [`docs/agent-skill-sample.md`](agent-skill-sample.md).
+- For pre-built AI agent integrations (including emoji progress reporting, failure root-cause analysis, DuckDB SQL historical analytics, and background polling), see [`docs/agent-skill-sample.md`](agent-skill-sample.md).
 
 ---
 
@@ -32,10 +32,11 @@ mvn -v           # any recent Maven (if using Maven)
 
 The published jars are compiled for **Java 21**. If `java -version` reports 17, update your JDK before proceeding.
 
-Optional utilities for parsing and validating output:
+Optional utilities for parsing, analyzing, and validating output:
 
 ```bash
-jq --version     # CLI JSON processor
+jq --version     # CLI JSON processor for streaming NDJSON
+duckdb --version # optional SQL engine for multi-run analytics and matrices
 node --version   # for the bundled validator script
 ```
 
