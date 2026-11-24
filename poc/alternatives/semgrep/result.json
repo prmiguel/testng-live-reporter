@@ -1,0 +1,150 @@
+{
+  "scanned": 7,
+  "counts": {
+    "semgrep.testng.description": 8,
+    "semgrep.testng.missing-assertion": 10,
+    "semgrep.testng.test-method": 10
+  },
+  "findings": [
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/BadlyNamed.java",
+      "line": 9
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/BadlyNamed.java",
+      "line": 9
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/BadlyNamed.java",
+      "line": 14
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/BadlyNamed.java",
+      "line": 14
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/BadlyNamed.java",
+      "line": 14
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 10
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 10
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 10
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 17
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 17
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 17
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 24
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/LoginTest.java",
+      "line": 24
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 24
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 24
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 24
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 29
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 29
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 29
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 35
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 35
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 35
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41
+    },
+    {
+      "rule": "semgrep.testng.description",
+      "file": "com/acme/tests/api/ApiSmokeTest.java",
+      "line": 20
+    },
+    {
+      "rule": "semgrep.testng.missing-assertion",
+      "file": "com/acme/tests/api/ApiSmokeTest.java",
+      "line": 20
+    },
+    {
+      "rule": "semgrep.testng.test-method",
+      "file": "com/acme/tests/api/ApiSmokeTest.java",
+      "line": 20
+    }
+  ]
+}

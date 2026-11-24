@@ -1,0 +1,655 @@
+{
+  "schemaVersion": 1,
+  "repo": {
+    "root": ".",
+    "astGrepVersion": "0.51.3"
+  },
+  "packages": [
+    {
+      "file": "poc/fixtures/java/com/acme/annotations/TmsId.java",
+      "package": "com.acme.annotations"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "package": "com.acme.tests"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BaseTest.java",
+      "package": "com.acme.tests"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "package": "com.acme.tests"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "package": "com.acme.tests"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/SharedProviders.java",
+      "package": "com.acme.tests"
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "package": "com.acme.tests.api"
+    }
+  ],
+  "classes": [
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 6,
+      "package": "com.acme.tests",
+      "name": "BadlyNamed",
+      "extends": null,
+      "groups": [],
+      "annotations": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BaseTest.java",
+      "line": 5,
+      "package": "com.acme.tests",
+      "name": "BaseTest",
+      "extends": null,
+      "groups": [],
+      "annotations": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 7,
+      "package": "com.acme.tests",
+      "name": "LoginTest",
+      "extends": "BaseTest",
+      "groups": [
+        "smoke",
+        "ui"
+      ],
+      "annotations": [
+        "Test"
+      ]
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 8,
+      "package": "com.acme.tests",
+      "name": "PaymentDataProviderTest",
+      "extends": null,
+      "groups": [],
+      "annotations": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/SharedProviders.java",
+      "line": 4,
+      "package": "com.acme.tests",
+      "name": "SharedProviders",
+      "extends": null,
+      "groups": [],
+      "annotations": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 7,
+      "package": "com.acme.tests.api",
+      "name": "ApiSmokeTest",
+      "extends": null,
+      "groups": [],
+      "annotations": []
+    }
+  ],
+  "tests": [
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 9,
+      "className": "BadlyNamed",
+      "method": "noAssertion",
+      "description": null,
+      "enabled": true,
+      "priority": null,
+      "groups": [],
+      "classGroups": [],
+      "effectiveGroups": [],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 15,
+      "className": "BadlyNamed",
+      "method": "typoGroup",
+      "description": "Typo in the group name",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payment"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payment"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {
+        "TmsId": "TMS-ABC"
+      },
+      "assertionCalls": [
+        "assertTrue"
+      ],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 11,
+      "className": "LoginTest",
+      "method": "validCredentialsOpenDashboard",
+      "description": "Valid credentials open the dashboard",
+      "enabled": true,
+      "priority": 1,
+      "groups": [
+        "login"
+      ],
+      "classGroups": [
+        "smoke",
+        "ui"
+      ],
+      "effectiveGroups": [
+        "login",
+        "smoke",
+        "ui"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {
+        "TmsId": "TMS-101"
+      },
+      "assertionCalls": [
+        "assertEquals"
+      ],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 18,
+      "className": "LoginTest",
+      "method": "rejectsExpiredPassword",
+      "description": "This description is deliberately far longer than sixty characters so the policy check fires",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "login"
+      ],
+      "classGroups": [
+        "smoke",
+        "ui"
+      ],
+      "effectiveGroups": [
+        "login",
+        "smoke",
+        "ui"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {
+        "TmsId": "TMS-101"
+      },
+      "assertionCalls": [
+        "assertTrue"
+      ],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 24,
+      "className": "LoginTest",
+      "method": "legacyFlow",
+      "description": null,
+      "enabled": false,
+      "priority": null,
+      "groups": [],
+      "classGroups": [
+        "smoke",
+        "ui"
+      ],
+      "effectiveGroups": [
+        "smoke",
+        "ui"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 24,
+      "className": "PaymentDataProviderTest",
+      "method": "settlesCard",
+      "description": "Card provider drives settlement",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payments"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payments"
+      ],
+      "dataProvider": "cards",
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "assertEquals"
+      ],
+      "parametersFromMethod": [
+        "card",
+        "expected"
+      ]
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 30,
+      "className": "PaymentDataProviderTest",
+      "method": "sharedProvider",
+      "description": "Shared provider resolves",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payments"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payments"
+      ],
+      "dataProvider": "shared",
+      "dataProviderClass": "SharedProviders",
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "assertNotNull"
+      ],
+      "parametersFromMethod": [
+        "value"
+      ]
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 36,
+      "className": "PaymentDataProviderTest",
+      "method": "readsSuiteParameters",
+      "description": "Parameters come from the suite",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payments"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payments"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [
+        "env",
+        "browser"
+      ],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "assertTrue"
+      ],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41,
+      "className": "PaymentDataProviderTest",
+      "method": "usesMissingProvider",
+      "description": "Provider name is not declared",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payments"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payments"
+      ],
+      "dataProvider": "missing",
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "assertNotNull"
+      ],
+      "parametersFromMethod": [
+        "value"
+      ]
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 48,
+      "className": "PaymentDataProviderTest",
+      "method": "repeatedInvocation",
+      "description": "Repeated invocation",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "payments"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "payments"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [],
+      "timeOut": null,
+      "invocationTimeOut": null,
+      "invocationCount": 2,
+      "threadPoolSize": 2,
+      "successPercentage": 100,
+      "singleThreaded": true,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "assertTrue"
+      ],
+      "parametersFromMethod": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 21,
+      "className": "ApiSmokeTest",
+      "method": "health",
+      "description": "Health endpoint responds",
+      "enabled": true,
+      "priority": null,
+      "groups": [
+        "smoke",
+        "api"
+      ],
+      "classGroups": [],
+      "effectiveGroups": [
+        "api",
+        "smoke"
+      ],
+      "dataProvider": null,
+      "dataProviderClass": null,
+      "parameters": [],
+      "expectedExceptions": [
+        "IllegalStateException"
+      ],
+      "timeOut": 5000,
+      "invocationTimeOut": null,
+      "invocationCount": null,
+      "threadPoolSize": null,
+      "successPercentage": null,
+      "singleThreaded": false,
+      "alwaysRun": false,
+      "retryAnalyzer": null,
+      "expectedExceptionsMessageRegExp": null,
+      "dependsOn": [],
+      "customAnnotations": {},
+      "assertionCalls": [
+        "fail"
+      ],
+      "parametersFromMethod": []
+    }
+  ],
+  "providers": [
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 11,
+      "className": "PaymentDataProviderTest",
+      "method": "cards",
+      "name": "cards",
+      "static": true,
+      "parallel": true,
+      "parameters": []
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/SharedProviders.java",
+      "line": 7,
+      "className": "SharedProviders",
+      "method": "shared",
+      "name": "shared",
+      "static": true,
+      "parallel": false,
+      "parameters": []
+    }
+  ],
+  "hooks": [
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BaseTest.java",
+      "line": 9,
+      "className": "BaseTest",
+      "method": "setUp",
+      "annotation": "BeforeMethod",
+      "scope": "method",
+      "groups": [],
+      "alwaysRun": true
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/BaseTest.java",
+      "line": 14,
+      "className": "BaseTest",
+      "method": "tearDown",
+      "annotation": "AfterMethod",
+      "scope": "method",
+      "groups": [],
+      "alwaysRun": true
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 19,
+      "className": "PaymentDataProviderTest",
+      "method": "beforePayments",
+      "annotation": "BeforeGroups",
+      "scope": "groups",
+      "groups": [
+        "payments"
+      ],
+      "alwaysRun": false
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 10,
+      "className": "ApiSmokeTest",
+      "method": "boot",
+      "annotation": "BeforeClass",
+      "scope": "class",
+      "groups": [],
+      "alwaysRun": false
+    },
+    {
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 15,
+      "className": "ApiSmokeTest",
+      "method": "stop",
+      "annotation": "AfterClass",
+      "scope": "class",
+      "groups": [],
+      "alwaysRun": true
+    }
+  ],
+  "suite": {
+    "file": "poc/fixtures/testng.xml",
+    "name": "acme",
+    "parallel": "methods",
+    "threadCount": 4,
+    "configFailurePolicy": "skip",
+    "groupByInstances": "false",
+    "preserveOrder": "true",
+    "parameters": {
+      "env": "ci",
+      "browser": "chrome"
+    },
+    "tests": [
+      {
+        "name": "smoke",
+        "preserveOrder": "true",
+        "groupByInstances": null,
+        "parameters": {},
+        "groups": {
+          "include": [
+            "smoke"
+          ],
+          "exclude": [
+            "quarantine"
+          ]
+        },
+        "packages": [],
+        "methods": {
+          "include": [],
+          "exclude": []
+        },
+        "classes": [
+          "com.acme.tests.LoginTest",
+          "com.acme.tests.api.ApiSmokeTest"
+        ]
+      },
+      {
+        "name": "regression",
+        "preserveOrder": null,
+        "groupByInstances": "true",
+        "parameters": {
+          "tenant": "acme"
+        },
+        "groups": {
+          "include": [],
+          "exclude": []
+        },
+        "packages": [
+          "com.acme.tests.*"
+        ],
+        "methods": {
+          "include": [
+            ".*"
+          ],
+          "exclude": [
+            "legacyFlow"
+          ]
+        },
+        "classes": [
+          "com.acme.tests.PaymentDataProviderTest"
+        ]
+      }
+    ],
+    "suiteFiles": [
+      "ci/testng-ci.xml"
+    ],
+    "listeners": [
+      "com.acme.listeners.ReportListener"
+    ]
+  }
+}

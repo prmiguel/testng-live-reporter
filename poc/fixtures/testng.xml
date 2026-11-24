@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="acme" parallel="methods" thread-count="4" configfailurepolicy="skip"
+       group-by-instances="false" preserve-order="true">
+    <parameter name="env" value="ci"/>
+    <parameter name="browser" value="chrome"/>
+    <test name="smoke" preserve-order="true">
+        <groups>
+            <run>
+                <include name="smoke"/>
+                <exclude name="quarantine"/>
+            </run>
+        </groups>
+        <classes>
+            <class name="com.acme.tests.LoginTest"/>
+            <class name="com.acme.tests.api.ApiSmokeTest"/>
+        </classes>
+    </test>
+    <test name="regression" group-by-instances="true">
+        <parameter name="tenant" value="acme"/>
+        <packages>
+            <package name="com.acme.tests.*"/>
+        </packages>
+        <methods>
+            <include name=".*"/>
+            <exclude name="legacyFlow"/>
+        </methods>
+        <classes>
+            <class name="com.acme.tests.PaymentDataProviderTest"/>
+        </classes>
+    </test>
+    <suite-files>
+        <suite-file path="ci/testng-ci.xml"/>
+    </suite-files>
+    <listeners>
+        <listener class-name="com.acme.listeners.ReportListener"/>
+    </listeners>
+</suite>

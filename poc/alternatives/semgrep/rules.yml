@@ -1,0 +1,68 @@
+rules:
+  - id: semgrep.testng.test-method
+    languages: [java]
+    message: TestNG test method
+    severity: INFO
+    metadata:
+      record: method
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @Test
+              $RET $M(...) {
+                ...
+              }
+          - pattern: |
+              @Test(...)
+              $RET $M(...) {
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $M
+          regex: '^[a-z][A-Za-z0-9]*$'
+
+  - id: semgrep.testng.description
+    languages: [java]
+    message: TestNG description
+    severity: INFO
+    metadata:
+      record: attr
+    patterns:
+      - pattern: |
+          @Test(..., description=$D, ...)
+          $RET $M(...) {
+            ...
+          }
+
+  - id: semgrep.testng.missing-assertion
+    languages: [java]
+    message: Test method without an assertion-looking call
+    severity: WARNING
+    metadata:
+      record: violation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @Test
+              $RET $M(...) {
+                ...
+              }
+          - pattern: |
+              @Test(...)
+              $RET $M(...) {
+                ...
+              }
+      - pattern-not: |
+          @Test
+          $RET $M(...) {
+            ...
+            assert...;
+            ...
+          }
+      - pattern-not: |
+          @Test(...)
+          $RET $M(...) {
+            ...
+            assert...;
+            ...
+          }

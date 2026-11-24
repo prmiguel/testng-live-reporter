@@ -1,0 +1,67 @@
+id: extract.testng.package
+language: Java
+severity: hint
+message: package
+metadata:
+  record: package
+rule:
+  kind: package_declaration
+  regex: '^package '
+---
+id: extract.testng.class
+language: Java
+severity: hint
+message: class $NAME
+metadata:
+  record: class
+rule:
+  all:
+    - kind: class_declaration
+    - has:
+        field: name
+        pattern: $NAME
+---
+id: extract.testng.class-super
+language: Java
+severity: hint
+message: class $NAME extends $SUPER
+metadata:
+  record: class-super
+rule:
+  all:
+    - kind: class_declaration
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        field: superclass
+        pattern: $SUPER
+---
+id: extract.testng.method
+language: Java
+severity: hint
+message: method $M
+metadata:
+  record: method
+rule:
+  all:
+    - kind: method_declaration
+    - has:
+        field: name
+        pattern: $M
+---
+id: extract.testng.param
+language: Java
+severity: hint
+message: parameter $PNAME
+metadata:
+  record: param
+rule:
+  all:
+    - kind: formal_parameter
+    - has:
+        field: name
+        pattern: $PNAME
+    - has:
+        field: type
+        pattern: $PTYPE

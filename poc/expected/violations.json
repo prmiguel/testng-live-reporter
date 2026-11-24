@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "violations": [
+    {
+      "ruleId": "violate.testng.class-suffix",
+      "severity": "error",
+      "message": "Test class 'BadlyNamed' should end with the configured suffix (default 'Test')",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 6,
+      "column": 0,
+      "catalogRule": "TN-NAME-001",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "violate.testng.missing-assertion",
+      "severity": "error",
+      "message": "@Test method 'noAssertion' contains no assertion call",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 8,
+      "column": 4,
+      "catalogRule": "TN-ASRT-001",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "violate.testng.missing-description",
+      "severity": "error",
+      "message": "@Test method 'noAssertion' has no description",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 8,
+      "column": 4,
+      "catalogRule": "TN-META-001",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on BadlyNamed.noAssertion",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 9,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.invalid-tms-id",
+      "severity": "error",
+      "message": "TMS id 'TMS-ABC' does not match ^TMS-[0-9]+$",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 15,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.unknown-group",
+      "severity": "warning",
+      "message": "Unknown group 'payment' on BadlyNamed.typoGroup",
+      "file": "poc/fixtures/java/com/acme/tests/BadlyNamed.java",
+      "line": 15,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "violate.testng.always-run-on-setup",
+      "severity": "error",
+      "message": "alwaysRun = true belongs on teardown, not on @Before* setup",
+      "file": "poc/fixtures/java/com/acme/tests/BaseTest.java",
+      "line": 8,
+      "column": 4,
+      "catalogRule": "TN-AP-008",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "violate.testng.priority-ordering",
+      "severity": "error",
+      "message": "@Test(priority) orders methods inside a class; use it only for a real dependency",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 9,
+      "column": 4,
+      "catalogRule": "TN-META-007",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "policy.testng.duplicate-tms-id",
+      "severity": "error",
+      "message": "TMS id TMS-101 is used by more than one test",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 11,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.description-too-long",
+      "severity": "warning",
+      "message": "Description is 91 characters (max 60): LoginTest.rejectsExpiredPassword",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 18,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.duplicate-tms-id",
+      "severity": "error",
+      "message": "TMS id TMS-101 is used by more than one test",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 18,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "violate.testng.disabled-test",
+      "severity": "error",
+      "message": "@Test is disabled with enabled = false; remove it or move it to the skip group",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 23,
+      "column": 4,
+      "catalogRule": "TN-META-009",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "violate.testng.missing-assertion",
+      "severity": "error",
+      "message": "@Test method 'legacyFlow' contains no assertion call",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 23,
+      "column": 4,
+      "catalogRule": "TN-ASRT-001",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "violate.testng.missing-description",
+      "severity": "error",
+      "message": "@Test method 'legacyFlow' has no description",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 23,
+      "column": 4,
+      "catalogRule": "TN-META-001",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on LoginTest.legacyFlow",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 24,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "violate.testng.system-out",
+      "severity": "error",
+      "message": "System.out bypasses the logging facade and the configured log levels",
+      "file": "poc/fixtures/java/com/acme/tests/LoginTest.java",
+      "line": 25,
+      "column": 8,
+      "catalogRule": "TN-LOG-002",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on PaymentDataProviderTest.settlesCard",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 24,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on PaymentDataProviderTest.sharedProvider",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 30,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on PaymentDataProviderTest.readsSuiteParameters",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 36,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on PaymentDataProviderTest.usesMissingProvider",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.unresolved-provider",
+      "severity": "error",
+      "message": "dataProvider 'missing' not found for PaymentDataProviderTest.usesMissingProvider",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 41,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on PaymentDataProviderTest.repeatedInvocation",
+      "file": "poc/fixtures/java/com/acme/tests/PaymentDataProviderTest.java",
+      "line": 48,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "violate.testng.broad-expected-exceptions",
+      "severity": "error",
+      "message": "expectedExceptions without expectedExceptionsMessageRegExp passes on any matching throw",
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 19,
+      "column": 4,
+      "catalogRule": "TN-META-010",
+      "source": "ast-grep"
+    },
+    {
+      "ruleId": "policy.testng.missing-tms-id",
+      "severity": "warning",
+      "message": "No TMS id on ApiSmokeTest.health",
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 21,
+      "catalogRule": null,
+      "source": "policy"
+    },
+    {
+      "ruleId": "violate.testng.thread-sleep",
+      "severity": "error",
+      "message": "Thread.sleep is a fixed wait; use an explicit condition or the framework's wait",
+      "file": "poc/fixtures/java/com/acme/tests/api/ApiSmokeTest.java",
+      "line": 23,
+      "column": 12,
+      "catalogRule": "TN-AP-003",
+      "source": "ast-grep"
+    }
+  ]
+}

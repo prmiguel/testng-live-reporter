@@ -1,0 +1,20 @@
+id: violate.testng.class-suffix
+language: Java
+severity: error
+message: Test class '$NAME' should end with the configured suffix (default 'Test')
+note: TestNG suites configured through Surefire only pick up classes named Test*, *Test, *Tests or *TestCase.
+metadata:
+  catalogRule: TN-NAME-001
+rule:
+  all:
+    - kind: class_declaration
+    - has:
+        field: name
+        pattern: $NAME
+    - has:
+        matches: testMethod
+        stopBy: end
+    - not:
+        has:
+          field: name
+          regex: 'Test$'

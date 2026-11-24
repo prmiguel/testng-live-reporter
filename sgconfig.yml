@@ -1,0 +1,5 @@
+ruleDirs:
+  - rules/extract
+  - rules/violations
+utilDirs:
+  - rules/utils

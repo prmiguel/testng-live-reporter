@@ -1,0 +1,6 @@
+smoke
+ui
+login
+payments
+api
+regression

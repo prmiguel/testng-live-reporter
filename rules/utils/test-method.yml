@@ -1,0 +1,18 @@
+id: testMethod
+language: Java
+rule:
+  all:
+    - kind: method_declaration
+    - has:
+        any:
+          - all:
+              - kind: annotation
+              - has:
+                  field: name
+                  regex: '^Test$'
+          - all:
+              - kind: marker_annotation
+              - has:
+                  field: name
+                  regex: '^Test$'
+        stopBy: end

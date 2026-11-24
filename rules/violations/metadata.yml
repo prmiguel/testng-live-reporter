@@ -1,0 +1,111 @@
+id: violate.testng.missing-description
+language: Java
+severity: error
+message: "@Test method '$M' has no description"
+note: Description is project convention, not a TestNG requirement; presence is checked here, length in policy.jq.
+metadata:
+  catalogRule: TN-META-001
+rule:
+  all:
+    - matches: testMethod
+    - has:
+        field: name
+        pattern: $M
+    - not:
+        has:
+          kind: element_value_pair
+          stopBy: end
+          has:
+            field: key
+            regex: '^description$'
+---
+id: violate.testng.disabled-test
+language: Java
+severity: error
+message: '@Test is disabled with enabled = false; remove it or move it to the skip group'
+metadata:
+  catalogRule: TN-META-009
+rule:
+  all:
+    - matches: testMethod
+    - has:
+        all:
+          - kind: element_value_pair
+          - has:
+              field: key
+              regex: '^enabled$'
+          - has:
+              field: value
+              regex: '^false$'
+        stopBy: end
+---
+id: violate.testng.priority-ordering
+language: Java
+severity: error
+message: '@Test(priority) orders methods inside a class; use it only for a real dependency'
+note: Priority is not an ordering guarantee across classes and hides test interdependence.
+metadata:
+  catalogRule: TN-META-007
+rule:
+  all:
+    - matches: testMethod
+    - has:
+        kind: element_value_pair
+        stopBy: end
+        has:
+          field: key
+          regex: '^priority$'
+---
+id: violate.testng.broad-expected-exceptions
+language: Java
+severity: error
+message: expectedExceptions without expectedExceptionsMessageRegExp passes on any matching throw
+note: Prefer Assert.expectThrows/assertThrows around the specific call.
+metadata:
+  catalogRule: TN-META-010
+rule:
+  all:
+    - matches: testMethod
+    - has:
+        kind: element_value_pair
+        stopBy: end
+        has:
+          field: key
+          regex: '^expectedExceptions$'
+    - not:
+        has:
+          kind: element_value_pair
+          stopBy: end
+          has:
+            field: key
+            regex: '^expectedExceptionsMessageRegExp$'
+---
+id: violate.testng.always-run-on-setup
+language: Java
+severity: error
+message: alwaysRun = true belongs on teardown, not on @Before* setup
+note: A setup that always runs hides the failure that should have stopped the test.
+metadata:
+  catalogRule: TN-AP-008
+rule:
+  all:
+    - kind: method_declaration
+    - has:
+        any:
+          - all:
+              - kind: annotation
+              - has:
+                  field: name
+                  regex: '^Before'
+          - all:
+              - kind: marker_annotation
+              - has:
+                  field: name
+                  regex: '^Before'
+        stopBy: end
+    - has:
+        kind: element_value_pair
+        stopBy: end
+        has:
+          field: key
+          regex: '^alwaysRun$'

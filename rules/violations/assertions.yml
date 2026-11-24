@@ -1,0 +1,20 @@
+id: violate.testng.missing-assertion
+language: Java
+severity: error
+message: "@Test method '$M' contains no assertion call"
+note: Recognises assert*, fail and verify by name; a helper with the same name is not resolved (no type information).
+metadata:
+  catalogRule: TN-ASRT-001
+rule:
+  all:
+    - matches: testMethod
+    - has:
+        field: name
+        pattern: $M
+    - not:
+        has:
+          kind: method_invocation
+          stopBy: end
+          has:
+            field: name
+            regex: '^(assert|fail|verify)'

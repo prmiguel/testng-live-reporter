@@ -1,0 +1,18 @@
+[
+  "Test",
+  "BeforeSuite",
+  "AfterSuite",
+  "BeforeTest",
+  "AfterTest",
+  "BeforeGroups",
+  "AfterGroups",
+  "BeforeClass",
+  "AfterClass",
+  "BeforeMethod",
+  "AfterMethod",
+  "DataProvider",
+  "Factory",
+  "Parameters",
+  "Optional",
+  "Listeners"
+]

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/testng-catalog.schema.json",
+  "title": "TestNG test catalog",
+  "type": "object",
+  "required": ["schemaVersion", "repo", "packages", "classes", "tests", "providers", "hooks", "suite"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "repo": {
+      "type": "object",
+      "required": ["root", "astGrepVersion"],
+      "properties": {
+        "root": {"type": "string"},
+        "astGrepVersion": {"type": "string"}
+      }
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "package"],
+        "properties": {
+          "file": {"type": "string"},
+          "package": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "package", "name", "extends", "groups", "annotations"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": "integer"},
+          "package": {"type": ["string", "null"]},
+          "name": {"type": "string"},
+          "extends": {"type": ["string", "null"]},
+          "groups": {"type": "array", "items": {"type": "string"}},
+          "annotations": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "className", "method", "description", "enabled",
+                     "groups", "classGroups", "effectiveGroups", "customAnnotations"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": "integer"},
+          "className": {"type": "string"},
+          "method": {"type": "string"},
+          "description": {"type": ["string", "null"]},
+          "enabled": {"type": "boolean"},
+          "priority": {"type": ["integer", "null"]},
+          "groups": {"type": "array", "items": {"type": "string"}},
+          "classGroups": {"type": "array", "items": {"type": "string"}},
+          "effectiveGroups": {"type": "array", "items": {"type": "string"}},
+          "dataProvider": {"type": ["string", "null"]},
+          "dataProviderClass": {"type": ["string", "null"]},
+          "parameters": {"type": "array", "items": {"type": "string"}},
+          "expectedExceptions": {"type": "array", "items": {"type": "string"}},
+          "timeOut": {"type": ["integer", "null"]},
+          "invocationTimeOut": {"type": ["integer", "null"]},
+          "invocationCount": {"type": ["integer", "null"]},
+          "threadPoolSize": {"type": ["integer", "null"]},
+          "successPercentage": {"type": ["integer", "null"]},
+          "singleThreaded": {"type": "boolean"},
+          "alwaysRun": {"type": "boolean"},
+          "retryAnalyzer": {"type": ["string", "null"]},
+          "expectedExceptionsMessageRegExp": {"type": ["string", "null"]},
+          "dependsOn": {"type": "array", "items": {"type": "string"}},
+          "customAnnotations": {"type": "object"},
+          "assertionCalls": {"type": "array", "items": {"type": "string"}},
+          "parametersFromMethod": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "providers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "className", "method", "name", "static", "parallel", "parameters"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": "integer"},
+          "className": {"type": "string"},
+          "method": {"type": "string"},
+          "name": {"type": "string"},
+          "static": {"type": "boolean"},
+          "parallel": {"type": "boolean"},
+          "parameters": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "hooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "line", "className", "method", "annotation", "scope", "groups", "alwaysRun"],
+        "properties": {
+          "file": {"type": "string"},
+          "line": {"type": "integer"},
+          "className": {"type": "string"},
+          "method": {"type": "string"},
+          "annotation": {"type": "string"},
+          "scope": {"enum": ["suite", "test", "groups", "class", "method"]},
+          "groups": {"type": "array", "items": {"type": "string"}},
+          "alwaysRun": {"type": "boolean"}
+        }
+      }
+    },
+    "suite": {"type": ["object", "null"]}
+  }
+}

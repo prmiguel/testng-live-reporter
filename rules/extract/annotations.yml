@@ -1,0 +1,50 @@
+id: extract.testng.annotation
+language: Java
+severity: hint
+message: annotation $ANN
+metadata:
+  record: annotation
+rule:
+  any:
+    - all:
+        - kind: annotation
+        - has:
+            field: name
+            pattern: $ANN
+    - all:
+        - kind: marker_annotation
+        - has:
+            field: name
+            pattern: $ANN
+---
+id: extract.testng.attr
+language: Java
+severity: hint
+message: attribute $K
+metadata:
+  record: attr
+rule:
+  all:
+    - kind: element_value_pair
+    - has:
+        field: key
+        pattern: $K
+    - has:
+        field: value
+        pattern: $V
+---
+id: extract.testng.annotation-string
+language: Java
+severity: hint
+message: string in $ANN
+metadata:
+  record: annotation-string
+rule:
+  all:
+    - kind: string_literal
+    - inside:
+        kind: annotation
+        stopBy: end
+        has:
+          field: name
+          pattern: $ANN

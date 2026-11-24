@@ -1,0 +1,17 @@
+id: violate.testng.system-out
+language: Java
+severity: error
+message: System.out bypasses the logging facade and the configured log levels
+metadata:
+  catalogRule: TN-LOG-002
+rule:
+  pattern: System.out.$METHOD($$$ARGS)
+---
+id: violate.testng.thread-sleep
+language: Java
+severity: error
+message: Thread.sleep is a fixed wait; use an explicit condition or the framework's wait
+metadata:
+  catalogRule: TN-AP-003
+rule:
+  pattern: Thread.sleep($$$ARGS)

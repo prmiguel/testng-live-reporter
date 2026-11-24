@@ -1,0 +1,12 @@
+id: extract.testng.call
+language: Java
+severity: hint
+message: call $CALL
+metadata:
+  record: call
+rule:
+  all:
+    - kind: method_invocation
+    - has:
+        field: name
+        pattern: $CALL
